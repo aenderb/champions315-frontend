@@ -1,30 +1,32 @@
 import { useState } from "react";
 import { useData } from "../contexts/DataContext";
 import { PlayerFormPopup } from "../components/player/PlayerFormPopup";
+import { ConfirmPopup } from "../components/ConfirmPopup";
 import type { PlayerFormData } from "../components/player/PlayerFormPopup";
 import type { PlayerEntry } from "../contexts/DataContext";
 import { calcAge } from "../utils/age";
-
-const POSITION_LABELS: Record<string, string> = {
-  GK: "GOL",
-  DEF: "DEF",
-  MID: "MEI",
-  FWD: "ATA",
-};
+import { FIELD_ROLE_SHORT } from "../constants";
 
 export function PlayersPage() {
   const { activeTeam, activeTeamId, activeTeamPlayers, addPlayer, updatePlayer, removePlayer } = useData();
   const [showForm, setShowForm] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<PlayerEntry | null>(null);
+  const [deletingPlayer, setDeletingPlayer] = useState<PlayerEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const handleSave = (data: PlayerFormData) => {
-    if (editingPlayer) {
-      updatePlayer(editingPlayer.id, data);
-    } else {
-      addPlayer(data);
+  const handleSave = async (data: PlayerFormData) => {
+    try {
+      if (editingPlayer) {
+        await updatePlayer(editingPlayer.id, data);
+      } else {
+        await addPlayer(data);
+      }
+      setShowForm(false);
+      setEditingPlayer(null);
+    } catch (err) {
+      console.error("Erro ao salvar jogador:", err);
+      alert(err instanceof Error ? err.message : "Erro ao salvar jogador");
     }
-    setShowForm(false);
-    setEditingPlayer(null);
   };
 
   const handleEdit = (player: PlayerEntry) => {
@@ -33,9 +35,7 @@ export function PlayersPage() {
   };
 
   const handleDelete = (player: PlayerEntry) => {
-    if (confirm(`Excluir "${player.name}"? Será removido das escalações.`)) {
-      removePlayer(player.id);
-    }
+    setDeletingPlayer(player);
   };
 
   const handleNew = () => {
@@ -117,7 +117,7 @@ export function PlayersPage() {
                       <span className="text-[10px] text-white/30 font-mono">#{player.number}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-white/40">
-                      <span>{POSITION_LABELS[player.position]}</span>
+                      <span>{player.fieldRole ? (FIELD_ROLE_SHORT[player.fieldRole] ?? player.fieldRole) : player.position}</span>
                       <span>·</span>
                       <span>{age} anos</span>
                     </div>
@@ -155,11 +155,33 @@ export function PlayersPage() {
           teamId: editingPlayer.teamId,
           number: editingPlayer.number,
           name: editingPlayer.name,
-          birthDate: editingPlayer.birthDate,
-          position: editingPlayer.position,
+          birthDate: editingPlayer.birthDate.slice(0, 10),
+          fieldRole: editingPlayer.fieldRole ?? undefined,
           avatar: editingPlayer.avatar,
         } : undefined}
         editMode={!!editingPlayer}
+      />
+
+      {/* Popup de confirmação de exclusão */}
+      <ConfirmPopup
+        isOpen={!!deletingPlayer}
+        onClose={() => setDeletingPlayer(null)}
+        onConfirm={async () => {
+          if (!deletingPlayer) return;
+          setDeleting(true);
+          try {
+            await removePlayer(deletingPlayer.id);
+            setDeletingPlayer(null);
+          } catch (err) {
+            console.error("Erro ao excluir jogador:", err);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        title="Excluir Jogador"
+        message={`Tem certeza que deseja excluir "${deletingPlayer?.name}"? O jogador será removido das escalações.`}
+        confirmLabel="Excluir"
+        loading={deleting}
       />
     </div>
   );

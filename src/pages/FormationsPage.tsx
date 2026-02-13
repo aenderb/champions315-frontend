@@ -1,16 +1,31 @@
 import { useState } from "react";
 import { useData } from "../contexts/DataContext";
 import { FormationBuilder } from "../components/formation/FormationBuilder";
+import { ConfirmPopup } from "../components/ConfirmPopup";
 import { calcAge } from "../utils/age";
+import type { LineupEntry } from "../contexts/DataContext";
 
 export function FormationsPage() {
-  const { activeTeam, activeTeamId, activeTeamPlayers, activeTeamLineups, addLineup, removeLineup } = useData();
+  const { activeTeam, activeTeamId, activeTeamPlayers, activeTeamLineups, addLineup, updateLineup, removeLineup } = useData();
   const [building, setBuilding] = useState(false);
+  const [editingLineup, setEditingLineup] = useState<LineupEntry | null>(null);
+  const [deletingLineup, setDeletingLineup] = useState<LineupEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const handleSave = (name: string, starterIds: string[], benchIds: string[]) => {
+  const handleSave = async (name: string, starterIds: string[], benchIds: string[]) => {
     if (!activeTeamId) return;
-    addLineup({ teamId: activeTeamId, name, starterIds, benchIds });
-    setBuilding(false);
+    try {
+      if (editingLineup) {
+        await updateLineup(editingLineup.id, { name, starterIds, benchIds });
+      } else {
+        await addLineup({ teamId: activeTeamId, name, starterIds, benchIds });
+      }
+      setBuilding(false);
+      setEditingLineup(null);
+    } catch (err) {
+      console.error("Erro ao salvar escalação:", err);
+      alert(err instanceof Error ? err.message : "Erro ao salvar escalação");
+    }
   };
 
   const getPlayerName = (id: string) => {
@@ -45,7 +60,9 @@ export function FormationsPage() {
         <FormationBuilder
           teamId={activeTeamId}
           onSave={handleSave}
-          onCancel={() => setBuilding(false)}
+          onCancel={() => { setBuilding(false); setEditingLineup(null); }}
+          initial={editingLineup ? { name: editingLineup.name, starterIds: editingLineup.starterIds } : undefined}
+          editMode={!!editingLineup}
         />
       </div>
     );
@@ -103,16 +120,7 @@ export function FormationsPage() {
                 key={lineup.id}
                 className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3"
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-bold text-sm">{lineup.name}</h3>
-                  <button
-                    onClick={() => removeLineup(lineup.id)}
-                    className="w-6 h-6 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-lg text-xs flex items-center justify-center cursor-pointer"
-                    title="Excluir"
-                  >
-                    ✕
-                  </button>
-                </div>
+                <h3 className="text-white font-bold text-sm">{lineup.name}</h3>
 
                 {/* Titulares */}
                 <div className="flex flex-col gap-1">
@@ -154,11 +162,52 @@ export function FormationsPage() {
                 }`}>
                   Σ Idades: {ageSum}
                 </div>
+
+                {/* Ações */}
+                <div className="flex gap-2 pt-1 border-t border-white/5">
+                  <button
+                    onClick={() => {
+                      setEditingLineup(lineup);
+                      setBuilding(true);
+                    }}
+                    className="flex-1 py-1.5 text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => setDeletingLineup(lineup)}
+                    className="py-1.5 px-3 text-xs font-semibold bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/30 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Popup de confirmação de exclusão */}
+      <ConfirmPopup
+        isOpen={!!deletingLineup}
+        onClose={() => setDeletingLineup(null)}
+        onConfirm={async () => {
+          if (!deletingLineup) return;
+          setDeleting(true);
+          try {
+            await removeLineup(deletingLineup.id);
+            setDeletingLineup(null);
+          } catch (err) {
+            console.error("Erro ao excluir escalação:", err);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        title="Excluir Escalação"
+        message={`Tem certeza que deseja excluir "${deletingLineup?.name}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        loading={deleting}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { GamePage } from './pages/GamePage';
 import { TeamsPage } from './pages/TeamsPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { FormationsPage } from './pages/FormationsPage';
+import { MatchesPage } from './pages/MatchesPage';
 
 /** Rota protegida — redireciona para home se não logado */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ function App() {
         <Route path="/jogadores" element={<ProtectedRoute><PlayersPage /></ProtectedRoute>} />
         <Route path="/formacoes" element={<ProtectedRoute><FormationsPage /></ProtectedRoute>} />
         <Route path="/jogo" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+        <Route path="/partidas" element={<ProtectedRoute><MatchesPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

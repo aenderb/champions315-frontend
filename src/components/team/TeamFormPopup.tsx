@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import type { FormEvent } from "react";
 import { PopupWithForm } from "../auth/PopupWithForm";
+import { compressImage } from "../../utils/image";
 
 export interface TeamFormData {
   name: string;
   color: string;
   badge: string | null;
+  badgeFile?: File;
   year: string;
   sponsor: string;
   sponsorLogo: string | null;
+  sponsorLogoFile?: File;
 }
 
 interface TeamFormPopupProps {
@@ -19,22 +22,15 @@ interface TeamFormPopupProps {
   editMode?: boolean;
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: TeamFormPopupProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#ffffff");
   const [badge, setBadge] = useState<string | null>(null);
+  const [badgeFile, setBadgeFile] = useState<File | null>(null);
   const [year, setYear] = useState("");
   const [sponsor, setSponsor] = useState("");
   const [sponsorLogo, setSponsorLogo] = useState<string | null>(null);
+  const [sponsorLogoFile, setSponsorLogoFile] = useState<File | null>(null);
 
   const badgeInputRef = useRef<HTMLInputElement>(null);
   const sponsorLogoInputRef = useRef<HTMLInputElement>(null);
@@ -45,9 +41,11 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
       setName(initial?.name ?? "");
       setColor(initial?.color ?? "#ffffff");
       setBadge(initial?.badge ?? null);
+      setBadgeFile(null);
       setYear(initial?.year ?? "");
       setSponsor(initial?.sponsor ?? "");
       setSponsorLogo(initial?.sponsorLogo ?? null);
+      setSponsorLogoFile(null);
     }
   }, [isOpen, initial]);
 
@@ -56,16 +54,32 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!canSubmit) return;
-    onSave({ name: name.trim(), color, badge, year, sponsor: sponsor.trim(), sponsorLogo });
+    onSave({
+      name: name.trim(),
+      color,
+      badge,
+      badgeFile: badgeFile ?? undefined,
+      year,
+      sponsor: sponsor.trim(),
+      sponsorLogo,
+      sponsorLogoFile: sponsorLogoFile ?? undefined,
+    });
   };
 
   const handleImageUpload = async (
     file: File | undefined,
-    setter: (val: string | null) => void
+    previewSetter: (val: string | null) => void,
+    fileSetter: (val: File | null) => void
   ) => {
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setter(base64);
+    try {
+      const compressed = await compressImage(file);
+      fileSetter(compressed);
+      previewSetter(URL.createObjectURL(compressed));
+    } catch {
+      fileSetter(file);
+      previewSetter(URL.createObjectURL(file));
+    }
   };
 
   const inputClass =
@@ -135,7 +149,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
               <img src={badge} alt="Escudo" className="w-full h-full object-contain rounded-lg border border-white/20" />
               <button
                 type="button"
-                onClick={() => { setBadge(null); if (badgeInputRef.current) badgeInputRef.current.value = ""; }}
+                onClick={() => { setBadge(null); setBadgeFile(null); if (badgeInputRef.current) badgeInputRef.current.value = ""; }}
                 className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center cursor-pointer"
               >
                 ✕
@@ -158,7 +172,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => handleImageUpload(e.target.files?.[0], setBadge)}
+            onChange={(e) => handleImageUpload(e.target.files?.[0], setBadge, setBadgeFile)}
           />
         </div>
       </div>
@@ -184,7 +198,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
               <img src={sponsorLogo} alt="Logo patrocinador" className="w-full h-full object-contain rounded-lg border border-white/20" />
               <button
                 type="button"
-                onClick={() => { setSponsorLogo(null); if (sponsorLogoInputRef.current) sponsorLogoInputRef.current.value = ""; }}
+                onClick={() => { setSponsorLogo(null); setSponsorLogoFile(null); if (sponsorLogoInputRef.current) sponsorLogoInputRef.current.value = ""; }}
                 className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center cursor-pointer"
               >
                 ✕
@@ -207,7 +221,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => handleImageUpload(e.target.files?.[0], setSponsorLogo)}
+            onChange={(e) => handleImageUpload(e.target.files?.[0], setSponsorLogo, setSponsorLogoFile)}
           />
         </div>
       </div>

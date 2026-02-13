@@ -14,4 +14,12 @@ export default defineConfig({
     }),
     cssCompatPlugin('chrome >= 92, safari >= 14, firefox >= 90'),
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3333',
+        changeOrigin: true,
+      },
+    },
+  },
 })

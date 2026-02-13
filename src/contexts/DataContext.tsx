@@ -1,35 +1,48 @@
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import type { ReactNode } from "react";
+import { useAuth } from "./AuthContext";
+import * as teamApi from "../api/teamApi";
+import * as playerApi from "../api/playerApi";
+import * as lineupApi from "../api/lineupApi";
+import * as matchApi from "../api/matchApi";
+import type { ApiTeam, ApiPlayer, ApiLineup, ApiMatch, ApiMatchCreate, PlayerPosition, FieldRole } from "../types/api";
+import { POSITION_ORDER, FIELD_ROLE_TO_POSITION } from "../constants";
 
-// ── Tipos locais (sem depender de domínio completo) ──
+// ── Tipos re-exportados (mantém compatibilidade com componentes) ──
 
-export interface TeamEntry {
-  id: string;
-  name: string;
-  color: string;
-  badge: string | null;
-  year: string;
-  sponsor: string;
-  sponsorLogo: string | null;
-}
+export type TeamEntry = ApiTeam & {
+  /** Alias para year como string (compatibilidade com forms) */
+};
 
-export interface PlayerEntry {
-  id: string;
-  teamId: string;
-  number: number;
-  name: string;
-  birthDate: string; // "YYYY-MM-DD"
-  position: "GK" | "DEF" | "MID" | "FWD";
-  avatar: string | null;
-}
+export type PlayerEntry = ApiPlayer;
+
+export type MatchEntry = ApiMatch;
 
 export interface LineupEntry {
   id: string;
   teamId: string;
   name: string;
-  starterIds: string[];  // 9 IDs (ordem: GK, DEF×4, MID×3, FWD×1)
+  formation: string;
+  starters: ApiPlayer[];
+  bench: ApiPlayer[];
+  starterIds: string[];
   benchIds: string[];
   createdAt: string;
+}
+
+function toLineupEntry(l: ApiLineup): LineupEntry {
+  // Ordena titulares pela posição (GK → DEF → MID → FWD)
+  // e por número dentro da mesma posição para ordem determinística
+  const sortedStarters = [...l.starters].sort((a, b) => {
+    const posDiff = (POSITION_ORDER[a.position] ?? 99) - (POSITION_ORDER[b.position] ?? 99);
+    if (posDiff !== 0) return posDiff;
+    return a.number - b.number;
+  });
+  return {
+    ...l,
+    starterIds: sortedStarters.map((p) => p.id),
+    benchIds: l.bench.map((p) => p.id),
+  };
 }
 
 interface DataContextType {
@@ -39,52 +52,139 @@ interface DataContextType {
   setActiveTeamId: (id: string | null) => void;
   // Teams CRUD
   teams: TeamEntry[];
-  addTeam: (team: Omit<TeamEntry, "id">) => void;
-  updateTeam: (id: string, data: Partial<Omit<TeamEntry, "id">>) => void;
-  removeTeam: (id: string) => void;
+  addTeam: (team: { name: string; color: string; badge?: string | null; badgeFile?: File; year?: string; sponsor?: string; sponsorLogo?: string | null; sponsorLogoFile?: File }) => Promise<void>;
+  updateTeam: (id: string, data: Partial<{ name: string; color: string; badge: string | null; badgeFile?: File; year: string; sponsor: string; sponsorLogo: string | null; sponsorLogoFile?: File }>) => Promise<void>;
+  removeTeam: (id: string) => Promise<void>;
   getTeamById: (teamId: string) => TeamEntry | undefined;
   // Players CRUD
   players: PlayerEntry[];
-  addPlayer: (player: Omit<PlayerEntry, "id">) => void;
-  updatePlayer: (id: string, data: Partial<Omit<PlayerEntry, "id">>) => void;
-  removePlayer: (id: string) => void;
+  addPlayer: (player: { teamId: string; number: number; name: string; birthDate: string; fieldRole: FieldRole; avatar: string | null; avatarFile?: File }) => Promise<void>;
+  updatePlayer: (id: string, data: Partial<{ number: number; name: string; birthDate: string; fieldRole: FieldRole; avatar: string | null; avatarFile?: File }>) => Promise<void>;
+  removePlayer: (id: string) => Promise<void>;
   getPlayersByTeam: (teamId: string) => PlayerEntry[];
   activeTeamPlayers: PlayerEntry[];
   // Lineups CRUD
   lineups: LineupEntry[];
-  addLineup: (lineup: Omit<LineupEntry, "id" | "createdAt">) => void;
-  updateLineup: (id: string, data: Partial<Omit<LineupEntry, "id" | "createdAt">>) => void;
-  removeLineup: (id: string) => void;
+  addLineup: (lineup: { teamId: string; name: string; starterIds: string[]; benchIds: string[] }) => Promise<void>;
+  updateLineup: (id: string, data: Partial<{ name: string; starterIds: string[]; benchIds: string[] }>) => Promise<void>;
+  removeLineup: (id: string) => Promise<void>;
   getLineupsByTeam: (teamId: string) => LineupEntry[];
   activeTeamLineups: LineupEntry[];
+  // Matches
+  matches: MatchEntry[];
+  addMatch: (teamId: string, data: ApiMatchCreate) => Promise<void>;
+  removeMatch: (teamId: string, matchId: string) => Promise<void>;
+  getMatchesByTeam: (teamId: string) => MatchEntry[];
+  activeTeamMatches: MatchEntry[];
+  // Loading
+  loading: boolean;
+  refreshData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { isLoggedIn } = useAuth();
   const [teams, setTeams] = useState<TeamEntry[]>([]);
   const [players, setPlayers] = useState<PlayerEntry[]>([]);
   const [lineups, setLineups] = useState<LineupEntry[]>([]);
+  const [matches, setMatches] = useState<MatchEntry[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // ── Carregar dados quando logado ──
+  const refreshData = useCallback(async () => {
+    if (!isLoggedIn) return;
+    setLoading(true);
+    try {
+      const fetchedTeams = await teamApi.getTeams();
+      setTeams(fetchedTeams);
+
+      // Auto-ativar primeiro time se nenhum ativo
+      setActiveTeamId((prev) => {
+        if (prev && fetchedTeams.some((t) => t.id === prev)) return prev;
+        return fetchedTeams[0]?.id ?? null;
+      });
+
+      // Buscar jogadores, escalações e partidas de todos os times
+      const allPlayers: PlayerEntry[] = [];
+      const allLineups: LineupEntry[] = [];
+      const allMatches: MatchEntry[] = [];
+
+      await Promise.all(
+        fetchedTeams.map(async (team) => {
+          // Busca cada recurso independentemente para que falha parcial não impeça os demais
+          const [playersResult, lineupsResult, matchesResult] = await Promise.allSettled([
+            playerApi.getPlayers(team.id),
+            lineupApi.getLineups(team.id),
+            matchApi.getMatches(team.id),
+          ]);
+
+          if (playersResult.status === "fulfilled") allPlayers.push(...playersResult.value);
+          else console.warn(`Erro ao carregar jogadores do time ${team.name}:`, playersResult.reason);
+
+          if (lineupsResult.status === "fulfilled") allLineups.push(...lineupsResult.value.map(toLineupEntry));
+          else console.warn(`Erro ao carregar escalações do time ${team.name}:`, lineupsResult.reason);
+
+          if (matchesResult.status === "fulfilled") allMatches.push(...matchesResult.value);
+          else console.warn(`Erro ao carregar partidas do time ${team.name}:`, matchesResult.reason);
+        })
+      );
+
+      setPlayers(allPlayers);
+      setLineups(allLineups);
+      setMatches(allMatches);
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      refreshData();
+    } else {
+      // Limpar tudo ao deslogar
+      setTeams([]);
+      setPlayers([]);
+      setLineups([]);
+      setMatches([]);
+      setActiveTeamId(null);
+    }
+  }, [isLoggedIn, refreshData]);
 
   // ── Teams ──
-  const addTeam = useCallback((team: Omit<TeamEntry, "id">) => {
-    const id = `team-${Date.now()}`;
-    setTeams((prev) => [...prev, { id, ...team }]);
-    // Auto-ativar se for a primeira equipe
-    setActiveTeamId((prev) => prev ?? id);
+  const addTeam = useCallback(async (data: { name: string; color: string; badge?: string | null; badgeFile?: File; year?: string; sponsor?: string; sponsorLogo?: string | null; sponsorLogoFile?: File }) => {
+    const created = await teamApi.createTeam({
+      name: data.name,
+      color: data.color,
+      badge: data.badgeFile,
+      year: data.year ? parseInt(data.year, 10) : undefined,
+      sponsor: data.sponsor || undefined,
+      sponsorLogo: data.sponsorLogoFile,
+    });
+    setTeams((prev) => [...prev, created]);
+    setActiveTeamId((prev) => prev ?? created.id);
   }, []);
 
-  const updateTeam = useCallback((id: string, data: Partial<Omit<TeamEntry, "id">>) => {
-    setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
+  const updateTeam = useCallback(async (id: string, data: Partial<{ name: string; color: string; badge: string | null; badgeFile?: File; year: string; sponsor: string; sponsorLogo: string | null; sponsorLogoFile?: File }>) => {
+    const updated = await teamApi.updateTeam(id, {
+      name: data.name,
+      color: data.color,
+      badge: data.badgeFile,
+      year: data.year ? parseInt(data.year, 10) : data.year === "" ? null : undefined,
+      sponsor: data.sponsor,
+      sponsorLogo: data.sponsorLogoFile,
+    });
+    setTeams((prev) => prev.map((t) => (t.id === id ? updated : t)));
   }, []);
 
-  const removeTeam = useCallback((id: string) => {
+  const removeTeam = useCallback(async (id: string) => {
+    await teamApi.deleteTeam(id);
     setTeams((prev) => prev.filter((t) => t.id !== id));
-    // Remover jogadores e escalações vinculados
     setPlayers((prev) => prev.filter((p) => p.teamId !== id));
     setLineups((prev) => prev.filter((l) => l.teamId !== id));
-    // Desativar se era a equipe ativa
     setActiveTeamId((prev) => (prev === id ? null : prev));
   }, []);
 
@@ -99,17 +199,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Players ──
-  const addPlayer = useCallback((player: Omit<PlayerEntry, "id">) => {
-    setPlayers((prev) => [...prev, { id: `player-${Date.now()}`, ...player }]);
+  const addPlayer = useCallback(async (data: { teamId: string; number: number; name: string; birthDate: string; fieldRole: FieldRole; avatar: string | null; avatarFile?: File }) => {
+    const created = await playerApi.createPlayer(data.teamId, {
+      number: data.number,
+      name: data.name,
+      birthDate: data.birthDate,
+      position: FIELD_ROLE_TO_POSITION[data.fieldRole],
+      fieldRole: data.fieldRole,
+      avatar: data.avatarFile,
+    });
+    setPlayers((prev) => [...prev, created]);
   }, []);
 
-  const updatePlayer = useCallback((id: string, data: Partial<Omit<PlayerEntry, "id">>) => {
-    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
-  }, []);
+  const updatePlayer = useCallback(async (id: string, data: Partial<{ teamId: string; number: number; name: string; birthDate: string; fieldRole: FieldRole; avatar: string | null; avatarFile?: File }>) => {
+    // Precisamos saber o teamId do jogador
+    const player = players.find((p) => p.id === id);
+    if (!player) return;
+    const updated = await playerApi.updatePlayer(player.teamId, id, {
+      number: data.number,
+      name: data.name,
+      birthDate: data.birthDate,
+      position: data.fieldRole ? FIELD_ROLE_TO_POSITION[data.fieldRole] : undefined,
+      fieldRole: data.fieldRole,
+      avatar: data.avatarFile,
+    });
+    setPlayers((prev) => prev.map((p) => (p.id === id ? updated : p)));
+  }, [players]);
 
-  const removePlayer = useCallback((id: string) => {
+  const removePlayer = useCallback(async (id: string) => {
+    const player = players.find((p) => p.id === id);
+    if (!player) return;
+    await playerApi.deletePlayer(player.teamId, id);
     setPlayers((prev) => prev.filter((p) => p.id !== id));
-    // Remover de escalações que contêm esse jogador
     setLineups((prev) =>
       prev.map((l) => ({
         ...l,
@@ -117,7 +238,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         benchIds: l.benchIds.filter((bid) => bid !== id),
       }))
     );
-  }, []);
+  }, [players]);
 
   const getPlayersByTeam = useCallback(
     (teamId: string) => players.filter((p) => p.teamId === teamId),
@@ -130,20 +251,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Lineups ──
-  const addLineup = useCallback((lineup: Omit<LineupEntry, "id" | "createdAt">) => {
-    setLineups((prev) => [
-      ...prev,
-      { id: `lineup-${Date.now()}`, createdAt: new Date().toISOString(), ...lineup },
-    ]);
+  const addLineup = useCallback(async (data: { teamId: string; name: string; starterIds: string[]; benchIds: string[] }) => {
+    const created = await lineupApi.createLineup(data.teamId, {
+      name: data.name,
+      formation: "4-3-1",
+      starterIds: data.starterIds,
+      benchIds: data.benchIds,
+    });
+    setLineups((prev) => [...prev, toLineupEntry(created)]);
   }, []);
 
-  const updateLineup = useCallback((id: string, data: Partial<Omit<LineupEntry, "id" | "createdAt">>) => {
-    setLineups((prev) => prev.map((l) => (l.id === id ? { ...l, ...data } : l)));
-  }, []);
+  const updateLineup = useCallback(async (id: string, data: Partial<{ name: string; starterIds: string[]; benchIds: string[] }>) => {
+    const lineup = lineups.find((l) => l.id === id);
+    if (!lineup) return;
+    const updated = await lineupApi.updateLineup(lineup.teamId, id, {
+      name: data.name,
+      starterIds: data.starterIds,
+      benchIds: data.benchIds,
+    });
+    setLineups((prev) => prev.map((l) => (l.id === id ? toLineupEntry(updated) : l)));
+  }, [lineups]);
 
-  const removeLineup = useCallback((id: string) => {
+  const removeLineup = useCallback(async (id: string) => {
+    const lineup = lineups.find((l) => l.id === id);
+    if (!lineup) return;
+    await lineupApi.deleteLineup(lineup.teamId, id);
     setLineups((prev) => prev.filter((l) => l.id !== id));
-  }, []);
+  }, [lineups]);
 
   const getLineupsByTeam = useCallback(
     (teamId: string) => lineups.filter((l) => l.teamId === teamId),
@@ -155,6 +289,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [lineups, activeTeamId]
   );
 
+  // ── Matches ──
+  const addMatch = useCallback(async (teamId: string, data: ApiMatchCreate) => {
+    const created = await matchApi.createMatch(teamId, data);
+    setMatches((prev) => [...prev, created]);
+  }, []);
+
+  const removeMatch = useCallback(async (teamId: string, matchId: string) => {
+    await matchApi.deleteMatch(teamId, matchId);
+    setMatches((prev) => prev.filter((m) => m.id !== matchId));
+  }, []);
+
+  const getMatchesByTeam = useCallback(
+    (teamId: string) => matches.filter((m) => m.teamId === teamId),
+    [matches]
+  );
+
+  const activeTeamMatches = useMemo(
+    () => (activeTeamId ? matches.filter((m) => m.teamId === activeTeamId) : []),
+    [matches, activeTeamId]
+  );
+
   return (
     <DataContext.Provider
       value={{
@@ -162,6 +317,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         teams, addTeam, updateTeam, removeTeam, getTeamById,
         players, addPlayer, updatePlayer, removePlayer, getPlayersByTeam, activeTeamPlayers,
         lineups, addLineup, updateLineup, removeLineup, getLineupsByTeam, activeTeamLineups,
+        matches, addMatch, removeMatch, getMatchesByTeam, activeTeamMatches,
+        loading, refreshData,
       }}
     >
       {children}

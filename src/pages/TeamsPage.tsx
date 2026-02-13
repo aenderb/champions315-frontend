@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TeamFormPopup } from "../components/team/TeamFormPopup";
+import { ConfirmPopup } from "../components/ConfirmPopup";
 import type { TeamFormData } from "../components/team/TeamFormPopup";
 import { useData } from "../contexts/DataContext";
 import type { TeamEntry } from "../contexts/DataContext";
@@ -8,15 +9,22 @@ export function TeamsPage() {
   const { teams, addTeam, updateTeam, removeTeam, getPlayersByTeam, activeTeamId, setActiveTeamId } = useData();
   const [showForm, setShowForm] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamEntry | null>(null);
+  const [deletingTeam, setDeletingTeam] = useState<TeamEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const handleSave = (data: TeamFormData) => {
-    if (editingTeam) {
-      updateTeam(editingTeam.id, data);
-    } else {
-      addTeam(data);
+  const handleSave = async (data: TeamFormData) => {
+    try {
+      if (editingTeam) {
+        await updateTeam(editingTeam.id, data);
+      } else {
+        await addTeam(data);
+      }
+      setShowForm(false);
+      setEditingTeam(null);
+    } catch (err) {
+      console.error("Erro ao salvar equipe:", err);
+      alert(err instanceof Error ? err.message : "Erro ao salvar equipe");
     }
-    setShowForm(false);
-    setEditingTeam(null);
   };
 
   const handleEdit = (team: TeamEntry) => {
@@ -25,9 +33,7 @@ export function TeamsPage() {
   };
 
   const handleDelete = (team: TeamEntry) => {
-    if (confirm(`Excluir "${team.name}"? Todos os jogadores e escalações serão removidos.`)) {
-      removeTeam(team.id);
-    }
+    setDeletingTeam(team);
   };
 
   const handleNew = () => {
@@ -152,6 +158,28 @@ export function TeamsPage() {
         onSave={handleSave}
         initial={editingTeam ?? undefined}
         editMode={!!editingTeam}
+      />
+
+      {/* Popup de confirmação de exclusão */}
+      <ConfirmPopup
+        isOpen={!!deletingTeam}
+        onClose={() => setDeletingTeam(null)}
+        onConfirm={async () => {
+          if (!deletingTeam) return;
+          setDeleting(true);
+          try {
+            await removeTeam(deletingTeam.id);
+            setDeletingTeam(null);
+          } catch (err) {
+            console.error("Erro ao excluir equipe:", err);
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        title="Excluir Equipe"
+        message={`Tem certeza que deseja excluir "${deletingTeam?.name}"? Todos os jogadores e escalações serão removidos.`}
+        confirmLabel="Excluir"
+        loading={deleting}
       />
     </div>
   );

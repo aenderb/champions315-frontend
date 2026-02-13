@@ -2,40 +2,33 @@ import { useState, useMemo } from "react";
 import { useData } from "../../contexts/DataContext";
 import type { PlayerEntry } from "../../contexts/DataContext";
 import { calcAge } from "../../utils/age";
-import { AGE_LIMIT } from "../../constants";
-
-const POSITION_LABELS: Record<string, string> = {
-  GK: "Goleiro",
-  DEF: "Defensor",
-  MID: "Meio-campo",
-  FWD: "Atacante",
-};
-
-/** Estrutura de slots da formação 4-3-1 */
-const FORMATION_SLOTS = [
-  { group: "GK", count: 1, label: "Goleiro" },
-  { group: "DEF", count: 4, label: "Defensores" },
-  { group: "MID", count: 3, label: "Meio-campistas" },
-  { group: "FWD", count: 1, label: "Atacante" },
-] as const;
+import { AGE_LIMIT, FORMATION_SLOTS, POSITION_LABELS } from "../../constants";
+import type { PlayerPosition } from "../../types/api";
 
 interface FormationBuilderProps {
   teamId: string;
   onSave: (name: string, starterIds: string[], benchIds: string[]) => void;
   onCancel: () => void;
+  /** Dados iniciais para modo edição */
+  initial?: { name: string; starterIds: string[] };
+  editMode?: boolean;
 }
 
-export function FormationBuilder({ teamId, onSave, onCancel }: FormationBuilderProps) {
+export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode }: FormationBuilderProps) {
   const { getPlayersByTeam, getTeamById } = useData();
   const team = getTeamById(teamId);
   const teamPlayers = getPlayersByTeam(teamId);
 
-  const [lineupName, setLineupName] = useState("");
-  const [starters, setStarters] = useState<(string | null)[]>(Array(9).fill(null));
+  const [lineupName, setLineupName] = useState(initial?.name ?? "");
+  const [starters, setStarters] = useState<(string | null)[]>(
+    initial?.starterIds
+      ? initial.starterIds.concat(Array(9 - initial.starterIds.length).fill(null))
+      : Array(9).fill(null)
+  );
 
   // Mapa de posição → slug para filtragem
   const slotPositions = useMemo(() => {
-    const arr: ("GK" | "DEF" | "MID" | "FWD")[] = [];
+    const arr: PlayerPosition[] = [];
     FORMATION_SLOTS.forEach((s) => {
       for (let i = 0; i < s.count; i++) arr.push(s.group);
     });
@@ -243,7 +236,7 @@ export function FormationBuilder({ teamId, onSave, onCancel }: FormationBuilderP
               >
                 <span className="font-mono text-white/30">#{p.number}</span>
                 <span>{p.name}</span>
-                <span className="text-white/20">{POSITION_LABELS[p.position]?.slice(0, 3)}</span>
+                <span className="text-white/20">{POSITION_LABELS[p.position]?.slice(0, 3) ?? p.position}</span>
               </div>
             ))}
           </div>
@@ -267,7 +260,7 @@ export function FormationBuilder({ teamId, onSave, onCancel }: FormationBuilderP
               : "bg-gray-700 text-gray-400 border-gray-600/50 cursor-not-allowed"
           }`}
         >
-          Salvar Escalação
+          {editMode ? "Salvar Alterações" : "Salvar Escalação"}
         </button>
       </div>
     </div>

@@ -31,7 +31,7 @@ export function HomePage() {
       {/* Hero */}
       <div className="max-w-3xl mx-auto text-center mb-8 md:mb-12">
         <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4">
-          ⚽ Campeonato 315
+          ⚽ Champions 315
         </h1>
         <p className="text-white/60 text-sm md:text-base lg:text-lg leading-relaxed max-w-2xl mx-auto">
           O Campeonato 315 é uma competição de futebol amador onde a soma das idades dos jogadores

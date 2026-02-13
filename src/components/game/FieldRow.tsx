@@ -7,11 +7,20 @@ interface FieldRowProps {
   color: string;
   yellowCardIds: Set<string>;
   onPlayerClick: (index: number) => void;
+  /** Alinhamento lateral: posiciona o jogador na linha conforme fieldRole */
+  align?: "start" | "center" | "end";
 }
 
-export function FieldRow({ players, color, yellowCardIds, onPlayerClick }: FieldRowProps) {
+const ALIGN_CLASS = {
+  start:  "justify-start",
+  center: "justify-center",
+  end:    "justify-end",
+} as const;
+
+export function FieldRow({ players, color, yellowCardIds, onPlayerClick, align }: FieldRowProps) {
+  const justifyClass = align ? ALIGN_CLASS[align] : "justify-around";
   return (
-    <div className="flex justify-around items-center w-full px-2 sm:px-4 md:px-8 landscape:flex-col landscape:w-auto landscape:h-full landscape:px-0 landscape:py-1 lg:flex-col lg:w-auto lg:h-full lg:px-0 lg:py-2">
+    <div className={`flex ${justifyClass} items-center w-full px-2 sm:px-4 md:px-8 landscape:flex-col landscape:w-auto landscape:h-full landscape:px-0 landscape:py-1 lg:flex-col lg:w-auto lg:h-full lg:px-0 lg:py-2`}>
       {players.map((player, idx) =>
         player ? (
           <PlayerBadge

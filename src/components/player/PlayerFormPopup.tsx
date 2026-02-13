@@ -3,14 +3,18 @@ import type { FormEvent } from "react";
 import { PopupWithForm } from "../auth/PopupWithForm";
 import { useData } from "../../contexts/DataContext";
 import type { TeamEntry } from "../../contexts/DataContext";
+import { ALL_FIELD_ROLES, FIELD_ROLE_TO_POSITION } from "../../constants";
+import type { FieldRole } from "../../types/api";
+import { compressImage } from "../../utils/image";
 
 export interface PlayerFormData {
   teamId: string;
   number: number;
   name: string;
   birthDate: string;
-  position: "GK" | "DEF" | "MID" | "FWD";
+  fieldRole: FieldRole;
   avatar: string | null;
+  avatarFile?: File;
 }
 
 interface PlayerFormPopupProps {
@@ -22,21 +26,6 @@ interface PlayerFormPopupProps {
   editMode?: boolean;
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-const POSITIONS = [
-  { value: "GK", label: "Goleiro" },
-  { value: "DEF", label: "Defensor" },
-  { value: "MID", label: "Meio-campo" },
-  { value: "FWD", label: "Atacante" },
-] as const;
 
 export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, initial, editMode }: PlayerFormPopupProps) {
   const { teams, activeTeamId } = useData();
@@ -45,8 +34,9 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [position, setPosition] = useState<"GK" | "DEF" | "MID" | "FWD">("DEF");
+  const [fieldRole, setFieldRole] = useState<FieldRole>("ST");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,9 +46,10 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       setTeamId(initial?.teamId ?? preselectedTeamId ?? activeTeamId ?? "");
       setName(initial?.name ?? "");
       setNumber(initial?.number?.toString() ?? "");
-      setBirthDate(initial?.birthDate ?? "");
-      setPosition(initial?.position ?? "DEF");
+      setBirthDate((initial?.birthDate ?? "").slice(0, 10));
+      setFieldRole(initial?.fieldRole ?? "ST");
       setAvatar(initial?.avatar ?? null);
+      setAvatarFile(null);
     }
   }, [isOpen, initial, preselectedTeamId, activeTeamId]);
 
@@ -76,15 +67,23 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       number: parseInt(number, 10),
       name: name.trim(),
       birthDate,
-      position,
+      fieldRole,
       avatar,
+      avatarFile: avatarFile ?? undefined,
     });
   };
 
   const handleAvatarUpload = async (file: File | undefined) => {
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setAvatar(base64);
+    try {
+      const compressed = await compressImage(file);
+      setAvatarFile(compressed);
+      setAvatar(URL.createObjectURL(compressed));
+    } catch {
+      // fallback: usa o arquivo original
+      setAvatarFile(file);
+      setAvatar(URL.createObjectURL(file));
+    }
   };
 
   const inputClass =
@@ -155,7 +154,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
         </div>
       </div>
 
-      {/* Data de nascimento + Posição */}
+      {/* Data de nascimento + Função em campo */}
       <div className="flex gap-3">
         <div className="flex flex-col gap-1 flex-1">
           <label className="text-xs text-white/50 font-medium">Data de nascimento *</label>
@@ -167,15 +166,15 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
           />
         </div>
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-xs text-white/50 font-medium">Posição</label>
+          <label className="text-xs text-white/50 font-medium">Função em campo *</label>
           <select
-            value={position}
-            onChange={(e) => setPosition(e.target.value as PlayerFormData["position"])}
+            value={fieldRole}
+            onChange={(e) => setFieldRole(e.target.value as FieldRole)}
             className={selectClass}
           >
-            {POSITIONS.map((p) => (
-              <option key={p.value} value={p.value} className="bg-gray-900">
-                {p.label}
+            {ALL_FIELD_ROLES.map((r) => (
+              <option key={r.value} value={r.value} className="bg-gray-900">
+                {r.label}
               </option>
             ))}
           </select>
@@ -191,7 +190,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
               <img src={avatar} alt="Foto" className="w-full h-full object-cover rounded-full border border-white/20" />
               <button
                 type="button"
-                onClick={() => { setAvatar(null); if (avatarInputRef.current) avatarInputRef.current.value = ""; }}
+                onClick={() => { setAvatar(null); setAvatarFile(null); if (avatarInputRef.current) avatarInputRef.current.value = ""; }}
                 className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[8px] text-white flex items-center justify-center cursor-pointer"
               >
                 ✕

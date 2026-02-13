@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import type { FormEvent } from "react";
 import { PopupWithForm } from "./PopupWithForm";
+import { compressImage } from "../../utils/image";
 
 interface RegisterPopupProps {
   isOpen: boolean;
@@ -27,8 +28,14 @@ export function RegisterPopup({ isOpen, onClose, onRegister, onSwitchToLogin }: 
 
   const handleAvatarUpload = async (file: File | undefined) => {
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    setAvatar(base64);
+    try {
+      const compressed = await compressImage(file);
+      const base64 = await fileToBase64(compressed);
+      setAvatar(base64);
+    } catch {
+      const base64 = await fileToBase64(file);
+      setAvatar(base64);
+    }
   };
 
   const canSubmit = name.trim().length > 0 && email.trim().length > 0 && password.length >= 6;

@@ -1,8 +1,26 @@
 import type { LineupPlayers } from "../../types";
+import type { FieldRole } from "../../types/api";
 import { PlayerBadge } from "./PlayerBadge";
 import { EmptySlotBadge } from "./EmptySlotBadge";
 import { FieldRow } from "./FieldRow";
 import { FieldMarkings } from "./FieldMarkings";
+
+/** Calcula alinhamento lateral a partir do fieldRole do jogador */
+function getFieldRoleAlign(fieldRole?: string): "start" | "center" | "end" | undefined {
+  if (!fieldRole) return undefined;
+  const leftRoles: FieldRole[] = ["LL", "LM", "LW", "LCB"];
+  const rightRoles: FieldRole[] = ["RL", "RM", "RW", "RCB"];
+  if (leftRoles.includes(fieldRole as FieldRole)) return "start";
+  if (rightRoles.includes(fieldRole as FieldRole)) return "end";
+  return "center";
+}
+
+/** Calcula alinhamento para uma linha com poucos jogadores */
+function getRowAlign(players: (import("../../types").Player | null)[]): "start" | "center" | "end" | undefined {
+  const nonNull = players.filter((p) => p !== null);
+  if (nonNull.length !== 1) return undefined; // multiple players → justify-around handles it
+  return getFieldRoleAlign(nonNull[0]?.fieldRole);
+}
 
 interface SoccerFieldProps {
   players: LineupPlayers;
@@ -54,6 +72,7 @@ export function SoccerField({ players, color, yellowCardIds, onRemoveFromField }
           color={color}
           yellowCardIds={yellowCardIds}
           onPlayerClick={(idx) => onRemoveFromField("attackers", idx)}
+          align={getRowAlign(players.attackers)}
         />
         <FieldRow
           players={players.midfielders}

@@ -34,11 +34,17 @@ export function PlayerBadge({ player, color, onClick, highlight, hasYellowCard, 
             }`}
             style={{ backgroundColor: color }}
           >
-            <img
-              src={player.avatar || "https://avatars.githubusercontent.com/u/11418532?v=4&size=64"}
-              alt={player.name}
-              className="w-full h-full object-cover"
-            />
+            {player.avatar ? (
+              <img
+                src={player.avatar}
+                alt={player.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-white/60 text-lg md:text-xl lg:text-2xl">
+                👤
+              </div>
+            )}
           </div>
 
           <svg

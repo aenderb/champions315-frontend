@@ -1,15 +1,15 @@
 // ──────────────────────────────────────────────
-// Domínio: Coach → Team → Players → Lineups
+// Domínio: User → Team → Players → Lineups
 // ──────────────────────────────────────────────
 
-/** Coach autenticado */
-export interface Coach {
+/** Usuário autenticado */
+export interface User {
   id: string;
   name: string;
   email: string;
 }
 
-/** Jogador cadastrado pelo coach */
+/** Jogador cadastrado pelo usuário */
 export interface Player {
   id: string;
   number: number;
@@ -17,12 +17,13 @@ export interface Player {
   birthDate: string; // "YYYY-MM-DD"
   avatar?: string;
   position: "GK" | "DEF" | "MID" | "FWD";
+  fieldRole?: string;
 }
 
-/** Time cadastrado pelo coach (1 coach = 1 time) */
+/** Time cadastrado pelo usuário (1 user = 1 time) */
 export interface Team {
   id: string;
-  coachId: string;
+  userId: string;
   name: string;
   color: string;
   badge?: string;        // URL/base64 do escudo
@@ -44,7 +45,7 @@ export interface LineupPlayers {
   attackers: (Player | null)[];   // 1
 }
 
-/** Escalação salva pelo coach */
+/** Escalação salva pelo usuário */
 export interface Lineup {
   id: string;
   teamId: string;

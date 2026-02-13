@@ -1,27 +1,68 @@
 import { useState, useMemo, useCallback } from "react";
 import SoccerLineup from "../components/game/SoccerLineup";
 import { ErrorBoundary } from "../components/ErrorBoundary";
-import { mockLineups, mockPlayers, mockTeam } from "../mocks";
-import { toLineupData } from "../api/mappers";
+import { useData } from "../contexts/DataContext";
+import { toLineupDataFromIds } from "../api/mappers";
+import type { ApiTeam, ApiPlayer, ApiMatchCreate } from "../types/api";
 import type { GameResult } from "../components/game/GameSummary";
 import { useNavigate } from "react-router-dom";
 
-const lineupOptions = mockLineups.map((l) => ({ id: l.id, name: l.name }));
-
 export function GamePage() {
   const navigate = useNavigate();
-  const [selectedLineupId, setSelectedLineupId] = useState(mockLineups[0].id);
+  const { activeTeam, activeTeamPlayers, activeTeamLineups, addMatch } = useData();
+  const [selectedLineupId, setSelectedLineupId] = useState<string | null>(null);
   const [savedGame, setSavedGame] = useState<GameResult | null>(null);
 
-  const lineup = useMemo(() => {
-    const apiLineup = mockLineups.find((l) => l.id === selectedLineupId) ?? mockLineups[0];
-    return toLineupData(apiLineup, mockPlayers, mockTeam);
-  }, [selectedLineupId]);
+  // Auto-selecionar primeira escalação
+  const currentLineupId = selectedLineupId ?? activeTeamLineups[0]?.id ?? null;
 
-  const handleGameSaved = useCallback((result: GameResult) => {
-    console.log("Jogo salvo:", result);
-    setSavedGame(result);
-  }, []);
+  const lineupOptions = useMemo(
+    () => activeTeamLineups.map((l) => ({ id: l.id, name: l.name })),
+    [activeTeamLineups]
+  );
+
+  const lineup = useMemo(() => {
+    if (!currentLineupId || !activeTeam) return null;
+    const entry = activeTeamLineups.find((l) => l.id === currentLineupId);
+    if (!entry) return null;
+    return toLineupDataFromIds(
+      { formation: "4-3-1", starterIds: entry.starterIds, benchIds: entry.benchIds },
+      activeTeamPlayers as ApiPlayer[],
+      activeTeam as unknown as ApiTeam
+    );
+  }, [currentLineupId, activeTeam, activeTeamLineups, activeTeamPlayers]);
+
+  const handleGameSaved = useCallback(async (result: GameResult) => {
+    if (!activeTeam) return;
+
+    // Mapeia cartões amarelos + vermelhos (expulsos) para o formato da API
+    const cards: ApiMatchCreate["cards"] = [
+      ...result.yellowCards.map((c) => ({
+        playerId: c.playerId,
+        type: "YELLOW" as const,
+      })),
+      ...result.expelledPlayers.map((p) => ({
+        playerId: p.playerId,
+        type: "RED" as const,
+      })),
+    ];
+
+    const matchData: ApiMatchCreate = {
+      opponentName: result.opponentName,
+      teamScore: result.scoreHome,
+      opponentScore: result.scoreAway,
+      date: result.gameDate,
+      cards,
+    };
+
+    try {
+      await addMatch(activeTeam.id, matchData);
+      setSavedGame(result);
+    } catch (err) {
+      console.error("Erro ao salvar partida:", err);
+      alert("Erro ao salvar a partida. Tente novamente.");
+    }
+  }, [activeTeam, addMatch]);
 
   const handleNewGame = useCallback(() => {
     setSavedGame(null);
@@ -36,7 +77,7 @@ export function GamePage() {
               <span className="text-4xl mb-3 block">✅</span>
               <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Jogo Salvo!</h2>
               <p className="text-white/70 text-sm md:text-base mb-1">
-                {lineup.teamName} {savedGame.scoreHome} × {savedGame.scoreAway} {savedGame.opponentName}
+                {activeTeam?.name} {savedGame.scoreHome} × {savedGame.scoreAway} {savedGame.opponentName}
               </p>
               {savedGame.expelledPlayers.length > 0 && (
                 <p className="text-red-300 text-xs md:text-sm mt-2 text-left">
@@ -68,12 +109,19 @@ export function GamePage() {
               </button>
             </div>
           </div>
+        ) : !lineup ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center text-white/50">
+              <p className="text-lg mb-2">Nenhuma escalação disponível</p>
+              <p className="text-sm">Crie uma escalação na página de Formações para iniciar um jogo.</p>
+            </div>
+          </div>
         ) : (
           <SoccerLineup
-            key={selectedLineupId}
+            key={currentLineupId}
             lineup={lineup}
             lineupOptions={lineupOptions}
-            selectedLineupId={selectedLineupId}
+            selectedLineupId={currentLineupId!}
             onLineupChange={setSelectedLineupId}
             onGameSaved={handleGameSaved}
           />

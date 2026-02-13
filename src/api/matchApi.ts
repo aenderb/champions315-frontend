@@ -1,44 +1,30 @@
-import { apiClient } from "./client";
-import { mockTeam, mockLineups, mockCoach } from "../mocks";
-import type { ApiTeam, ApiLineup, ApiCoach, ApiLoginResponse } from "../types/api";
+import { get, post, del } from "./client";
+import type { ApiMatch, ApiMatchCreate } from "../types/api";
 
-// ── Auth ─────────────────────────────────────
+const base = (teamId: string) => `/teams/${teamId}/matches`;
 
-/** Simula login do coach */
-export async function login(
-  _email: string,
-  _password: string
-): Promise<ApiLoginResponse> {
-  return apiClient("/auth/login", {
-    token: "mock-jwt-token-123",
-    coach: mockCoach,
-  });
+export async function getMatches(teamId: string): Promise<ApiMatch[]> {
+  return get<ApiMatch[]>(base(teamId));
 }
 
-/** Busca dados do coach logado */
-export async function getCoach(): Promise<ApiCoach> {
-  return apiClient("/coach/me", mockCoach);
+export async function getMatchById(
+  teamId: string,
+  matchId: string
+): Promise<ApiMatch> {
+  return get<ApiMatch>(`${base(teamId)}/${matchId}`);
 }
 
-// ── Team ─────────────────────────────────────
-
-/** Busca o time do coach */
-export async function getTeam(): Promise<ApiTeam> {
-  return apiClient("/team", mockTeam);
+export async function createMatch(
+  teamId: string,
+  data: ApiMatchCreate
+): Promise<ApiMatch> {
+  return post<ApiMatch>(base(teamId), data);
 }
 
-// ── Lineups ──────────────────────────────────
-
-/** Busca todas as escalações do time */
-export async function getLineups(): Promise<ApiLineup[]> {
-  return apiClient("/lineups", mockLineups);
-}
-
-/** Busca uma escalação por ID */
-export async function getLineupById(
-  lineupId: string
-): Promise<ApiLineup | undefined> {
-  const lineup = mockLineups.find((l) => l.id === lineupId);
-  return apiClient(`/lineups/${lineupId}`, lineup);
+export async function deleteMatch(
+  teamId: string,
+  matchId: string
+): Promise<void> {
+  return del(`${base(teamId)}/${matchId}`);
 }
 
