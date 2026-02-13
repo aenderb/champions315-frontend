@@ -214,7 +214,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const updatePlayer = useCallback(async (id: string, data: Partial<{ teamId: string; number: number; name: string; birthDate: string; fieldRole: FieldRole; avatar: string | null; avatarFile?: File }>) => {
     // Precisamos saber o teamId do jogador
     const player = players.find((p) => p.id === id);
-    if (!player) return;
+    if (!player) throw new Error("Jogador não encontrado");
     const updated = await playerApi.updatePlayer(player.teamId, id, {
       number: data.number,
       name: data.name,

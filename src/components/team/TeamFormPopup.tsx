@@ -17,7 +17,7 @@ export interface TeamFormData {
 interface TeamFormPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: TeamFormData) => void;
+  onSave: (data: TeamFormData) => Promise<void> | void;
   initial?: Partial<TeamFormData>;
   editMode?: boolean;
 }
@@ -31,13 +31,15 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
   const [sponsor, setSponsor] = useState("");
   const [sponsorLogo, setSponsorLogo] = useState<string | null>(null);
   const [sponsorLogoFile, setSponsorLogoFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const badgeInputRef = useRef<HTMLInputElement>(null);
   const sponsorLogoInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset ao abrir
+  // Reset ao abrir — só quando isOpen muda para true
+  const prevOpen = useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpen.current) {
       setName(initial?.name ?? "");
       setColor(initial?.color ?? "#ffffff");
       setBadge(initial?.badge ?? null);
@@ -47,23 +49,31 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
       setSponsorLogo(initial?.sponsorLogo ?? null);
       setSponsorLogoFile(null);
     }
+    prevOpen.current = isOpen;
   }, [isOpen, initial]);
 
   const canSubmit = name.trim().length > 0;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    onSave({
-      name: name.trim(),
-      color,
-      badge,
-      badgeFile: badgeFile ?? undefined,
-      year,
-      sponsor: sponsor.trim(),
-      sponsorLogo,
-      sponsorLogoFile: sponsorLogoFile ?? undefined,
-    });
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        color,
+        badge,
+        badgeFile: badgeFile ?? undefined,
+        year,
+        sponsor: sponsor.trim(),
+        sponsorLogo,
+        sponsorLogoFile: sponsorLogoFile ?? undefined,
+      });
+    } catch {
+      // erro tratado pelo chamador
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleImageUpload = async (
@@ -91,8 +101,8 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
       isOpen={isOpen}
       onClose={onClose}
       onSubmit={handleSubmit}
-      submitLabel={editMode ? "Salvar Alterações" : "Salvar Equipe"}
-      submitDisabled={!canSubmit}
+      submitLabel={saving ? "Salvando..." : editMode ? "Salvar Alterações" : "Salvar Equipe"}
+      submitDisabled={!canSubmit || saving}
     >
       {/* Nome */}
       <div className="flex flex-col gap-1">

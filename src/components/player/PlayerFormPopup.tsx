@@ -20,7 +20,7 @@ export interface PlayerFormData {
 interface PlayerFormPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: PlayerFormData) => void;
+  onSave: (data: PlayerFormData) => Promise<void> | void;
   preselectedTeamId?: string;
   initial?: Partial<PlayerFormData>;
   editMode?: boolean;
@@ -37,12 +37,14 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
   const [fieldRole, setFieldRole] = useState<FieldRole>("ST");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset ao abrir
+  // Reset ao abrir — só quando isOpen muda para true
+  const prevOpen = useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpen.current) {
       setTeamId(initial?.teamId ?? preselectedTeamId ?? activeTeamId ?? "");
       setName(initial?.name ?? "");
       setNumber(initial?.number?.toString() ?? "");
@@ -51,6 +53,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       setAvatar(initial?.avatar ?? null);
       setAvatarFile(null);
     }
+    prevOpen.current = isOpen;
   }, [isOpen, initial, preselectedTeamId, activeTeamId]);
 
   const canSubmit =
@@ -59,18 +62,25 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
     number.length > 0 &&
     birthDate.length === 10;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    onSave({
-      teamId,
-      number: parseInt(number, 10),
-      name: name.trim(),
-      birthDate,
-      fieldRole,
-      avatar,
-      avatarFile: avatarFile ?? undefined,
-    });
+    if (!canSubmit || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        teamId,
+        number: parseInt(number, 10),
+        name: name.trim(),
+        birthDate,
+        fieldRole,
+        avatar,
+        avatarFile: avatarFile ?? undefined,
+      });
+    } catch {
+      // erro tratado pelo chamador
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAvatarUpload = async (file: File | undefined) => {
@@ -98,8 +108,8 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       isOpen={isOpen}
       onClose={onClose}
       onSubmit={handleSubmit}
-      submitLabel={editMode ? "Salvar Alterações" : "Salvar Jogador"}
-      submitDisabled={!canSubmit}
+      submitLabel={saving ? "Salvando..." : editMode ? "Salvar Alterações" : "Salvar Jogador"}
+      submitDisabled={!canSubmit || saving}
     >
       {/* Equipe */}
       <div className="flex flex-col gap-1">
