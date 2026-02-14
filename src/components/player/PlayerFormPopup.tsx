@@ -115,7 +115,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
     >
       {/* Equipe */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-white/50 font-medium">Equipe *</label>
+        <label className="text-xs text-white/50 font-medium">Equipe <span className="text-red-400">*</span></label>
         {teams.length === 0 ? (
           <p className="text-xs text-yellow-400/80">Cadastre uma equipe primeiro.</p>
         ) : editMode ? (
@@ -144,7 +144,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       {/* Nome + Número (lado a lado) */}
       <div className="flex gap-3">
         <div className="flex flex-col gap-1 flex-1">
-          <label className="text-xs text-white/50 font-medium">Nome completo *</label>
+          <label className="text-xs text-white/50 font-medium">Nome completo <span className="text-red-400">*</span></label>
           <input
             type="text"
             value={name}
@@ -154,7 +154,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
           />
         </div>
         <div className="flex flex-col gap-1 w-20">
-          <label className="text-xs text-white/50 font-medium">Nº *</label>
+          <label className="text-xs text-white/50 font-medium">Nº <span className="text-red-400">*</span></label>
           <input
             type="text"
             value={number}
@@ -169,7 +169,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       {/* Data de nascimento + Função em campo */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex flex-col gap-1 w-36 shrink-0">
-          <label className="text-xs text-white/50 font-medium">Nascimento *</label>
+          <label className="text-xs text-white/50 font-medium">Nascimento <span className="text-red-400">*</span></label>
           <input
             type="date"
             value={birthDate}
@@ -178,7 +178,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
           />
         </div>
         <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <label className="text-xs text-white/50 font-medium">Função em campo *</label>
+          <label className="text-xs text-white/50 font-medium">Função em campo <span className="text-red-400">*</span></label>
           <select
             value={fieldRole}
             onChange={(e) => setFieldRole(e.target.value as FieldRole)}

@@ -42,7 +42,7 @@ export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister, error
       }
     >
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-white/50 font-medium">E-mail</label>
+        <label className="text-xs text-white/50 font-medium">E-mail <span className="text-red-400">*</span></label>
         <input
           type="email"
           value={email}
@@ -53,7 +53,7 @@ export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister, error
         />
       </div>
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-white/50 font-medium">Senha</label>
+        <label className="text-xs text-white/50 font-medium">Senha <span className="text-red-400">*</span></label>
         <input
           type="password"
           value={password}

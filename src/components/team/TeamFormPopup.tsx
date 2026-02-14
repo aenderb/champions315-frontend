@@ -108,7 +108,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode, erro
     >
       {/* Nome */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-white/50 font-medium">Nome da equipe *</label>
+        <label className="text-xs text-white/50 font-medium">Nome da equipe <span className="text-red-400">*</span></label>
         <input
           type="text"
           value={name}
