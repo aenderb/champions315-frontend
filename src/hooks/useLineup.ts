@@ -93,34 +93,6 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
     newTotalAge: number;
   } | null>(null);
 
-  /** Substituir: field player ↔ bench player */
-  const substitutePlayer = useCallback(
-    (benchIndex: number) => {
-      if (!selectedSlot) return;
-
-      const benchPlayer = bench[benchIndex];
-      const fieldPlayer =
-        selectedSlot.group === "gk"
-          ? players.gk
-          : players[selectedSlot.group][selectedSlot.index];
-
-      // Simular a nova soma de idades
-      const fieldPlayerAge = fieldPlayer ? calcAge(fieldPlayer.birthDate) : 0;
-      const benchPlayerAge = calcAge(benchPlayer.birthDate);
-      const newTotal = totalAge - fieldPlayerAge + benchPlayerAge;
-
-      // Se vai ficar abaixo do limite e atualmente está acima, pedir confirmação
-      if (newTotal < AGE_LIMIT && totalAge >= AGE_LIMIT && !hasExpulsions) {
-        setPendingSub({ benchIndex, newTotalAge: newTotal });
-        return;
-      }
-
-      // Executar troca diretamente
-      executeSubstitution(benchIndex);
-    },
-    [selectedSlot, bench, players, totalAge, hasExpulsions]
-  );
-
   /** Executar a substituição de fato */
   const executeSubstitution = useCallback(
     (benchIndex: number) => {
@@ -155,6 +127,34 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
       setPendingSub(null);
     },
     [selectedSlot, bench, players]
+  );
+
+  /** Substituir: field player ↔ bench player */
+  const substitutePlayer = useCallback(
+    (benchIndex: number) => {
+      if (!selectedSlot) return;
+
+      const benchPlayer = bench[benchIndex];
+      const fieldPlayer =
+        selectedSlot.group === "gk"
+          ? players.gk
+          : players[selectedSlot.group][selectedSlot.index];
+
+      // Simular a nova soma de idades
+      const fieldPlayerAge = fieldPlayer ? calcAge(fieldPlayer.birthDate) : 0;
+      const benchPlayerAge = calcAge(benchPlayer.birthDate);
+      const newTotal = totalAge - fieldPlayerAge + benchPlayerAge;
+
+      // Se vai ficar abaixo do limite e atualmente está acima, pedir confirmação
+      if (newTotal < AGE_LIMIT && totalAge >= AGE_LIMIT && !hasExpulsions) {
+        setPendingSub({ benchIndex, newTotalAge: newTotal });
+        return;
+      }
+
+      // Executar troca diretamente
+      executeSubstitution(benchIndex);
+    },
+    [selectedSlot, bench, players, totalAge, hasExpulsions, executeSubstitution]
   );
 
   /** Confirmar substituição pendente */

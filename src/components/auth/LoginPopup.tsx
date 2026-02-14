@@ -13,13 +13,21 @@ interface LoginPopupProps {
 export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister, errorMessage }: LoginPopupProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const canSubmit = email.trim().length > 0 && password.length >= 6;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    onLogin(email.trim(), password);
+    if (!canSubmit || loading) return;
+    setLoading(true);
+    try {
+      await onLogin(email.trim(), password);
+    } catch {
+      // erro tratado pelo chamador
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,8 +36,8 @@ export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister, error
       isOpen={isOpen}
       onClose={onClose}
       onSubmit={handleSubmit}
-      submitLabel="Entrar"
-      submitDisabled={!canSubmit}
+      submitLabel={loading ? "Entrando..." : "Entrar"}
+      submitDisabled={!canSubmit || loading}
       errorMessage={errorMessage}
       footer={
         <button
