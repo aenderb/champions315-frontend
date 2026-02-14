@@ -18,6 +18,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon315.png'],
       manifest: {
+        id: '/',
         name: 'Champions 315',
         short_name: 'Champions 315',
         description: 'Gerenciamento de partidas com a regra dos 315',
@@ -25,6 +26,7 @@ export default defineConfig({
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
+        scope: '/',
         start_url: '/',
         icons: [
           {
