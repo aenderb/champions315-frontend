@@ -14,6 +14,8 @@ export interface YellowCard {
   playerName: string;
 }
 
+export type GkReplacementPhase = null | "choose-replacement" | "choose-outfielder-to-remove";
+
 export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
   const [players, setPlayers] = useState<LineupPlayers>(initialPlayers);
   const [bench, setBench] = useState<Player[]>(initialBench);
@@ -26,6 +28,9 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
 
   /** Jogadores expulsos (para exibir na barra de reservas) */
   const [expelledPlayers, setExpelledPlayers] = useState<Player[]>([]);
+
+  /** Fase de substituição do goleiro expulso */
+  const [gkReplacementPhase, setGkReplacementPhase] = useState<GkReplacementPhase>(null);
 
   /** Quantidade de jogadores expulsos */
   const expelledCount = expelledPlayers.length;
@@ -122,10 +127,11 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
 
     // Guardar o jogador antes de remover
     const expelled = selectedPlayer;
+    const isGk = selectedSlot.group === "gk";
 
     setPlayers((prev) => {
       const next = { ...prev };
-      if (selectedSlot.group === "gk") {
+      if (isGk) {
         next.gk = null;
       } else {
         const arr = [...prev[selectedSlot.group]];
@@ -137,7 +143,77 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
 
     setExpelledPlayers((prev) => [...prev, expelled]);
     setSelectedSlot(null);
+
+    // Se o goleiro foi expulso, iniciar fluxo de substituição obrigatória
+    if (isGk) {
+      setGkReplacementPhase("choose-replacement");
+    }
   }, [selectedSlot, selectedPlayer]);
+
+  // ─── Substituição obrigatória do goleiro expulso ──────────
+
+  /** Substituir goleiro expulso por jogador do banco */
+  const replaceGkFromBench = useCallback(
+    (benchIndex: number) => {
+      if (gkReplacementPhase !== "choose-replacement") return;
+
+      const benchPlayer = bench[benchIndex];
+
+      // Colocar o jogador como goleiro
+      setPlayers((prev) => ({ ...prev, gk: benchPlayer }));
+      setBench((prev) => prev.filter((_, i) => i !== benchIndex));
+
+      // Sempre exigir que um jogador de linha saia do campo
+      setGkReplacementPhase("choose-outfielder-to-remove");
+    },
+    [gkReplacementPhase, bench]
+  );
+
+  /** Substituir goleiro expulso por jogador de linha em campo */
+  const replaceGkFromField = useCallback(
+    (group: "defenders" | "midfielders" | "attackers", index: number) => {
+      if (gkReplacementPhase !== "choose-replacement") return;
+
+      const fieldPlayer = players[group][index];
+      if (!fieldPlayer) return;
+
+      // Move o jogador de linha para a posição de goleiro
+      setPlayers((prev) => {
+        const next = { ...prev };
+        next.gk = fieldPlayer;
+        const arr = [...prev[group]];
+        arr.splice(index, 1);
+        next[group] = arr;
+        return next;
+      });
+
+      setGkReplacementPhase(null);
+    },
+    [gkReplacementPhase, players]
+  );
+
+  /** Remover jogador de linha após goleiro reserva entrar (2ª etapa) */
+  const removeOutfielderForGkReplacement = useCallback(
+    (group: "defenders" | "midfielders" | "attackers", index: number) => {
+      if (gkReplacementPhase !== "choose-outfielder-to-remove") return;
+
+      const fieldPlayer = players[group][index];
+      if (!fieldPlayer) return;
+
+      // Remove o jogador de linha do campo e coloca no banco
+      setPlayers((prev) => {
+        const next = { ...prev };
+        const arr = [...prev[group]];
+        arr.splice(index, 1);
+        next[group] = arr;
+        return next;
+      });
+
+      setBench((prev) => [...prev, fieldPlayer]);
+      setGkReplacementPhase(null);
+    },
+    [gkReplacementPhase, players]
+  );
 
   /** Set de IDs que já tomaram amarelo */
   const yellowCardIds = useMemo(
@@ -180,10 +256,14 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
     yellowCards,
     yellowCardIds,
     onFieldPlayers,
+    gkReplacementPhase,
     selectPlayer,
     cancelSelection,
     substitutePlayer,
     expelSelectedPlayer,
     giveYellowCard,
+    replaceGkFromBench,
+    replaceGkFromField,
+    removeOutfielderForGkReplacement,
   };
 }

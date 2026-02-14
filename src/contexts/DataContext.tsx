@@ -5,7 +5,7 @@ import * as teamApi from "../api/teamApi";
 import * as playerApi from "../api/playerApi";
 import * as lineupApi from "../api/lineupApi";
 import * as matchApi from "../api/matchApi";
-import type { ApiTeam, ApiPlayer, ApiLineup, ApiMatch, ApiMatchCreate, PlayerPosition, FieldRole } from "../types/api";
+import type { ApiTeam, ApiPlayer, ApiLineup, ApiMatch, ApiMatchCreate, FieldRole } from "../types/api";
 import { POSITION_ORDER, FIELD_ROLE_TO_POSITION } from "../constants";
 
 // ── Tipos re-exportados (mantém compatibilidade com componentes) ──

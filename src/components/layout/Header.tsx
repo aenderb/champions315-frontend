@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { useData } from "../../contexts/DataContext";
 import { LoginPopup } from "../auth/LoginPopup";
 import { RegisterPopup } from "../auth/RegisterPopup";
 import { SuccessPopup } from "../auth/SuccessPopup";
@@ -12,7 +11,6 @@ type AuthPopup = "login" | "register" | "success" | null;
 
 export function Header() {
   const { isLoggedIn, userName, userAvatar, login, register, logout, updateAvatar } = useAuth();
-  const { activeTeam } = useData();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePopup, setActivePopup] = useState<AuthPopup>(null);
@@ -201,13 +199,15 @@ export function Header() {
         isOpen={activePopup === "login"}
         onClose={closePopup}
         onLogin={handleLogin}
-        onSwitchToRegister={() => setActivePopup("register")}
+        onSwitchToRegister={() => { setAuthError(null); setActivePopup("register"); }}
+        errorMessage={authError}
       />
       <RegisterPopup
         isOpen={activePopup === "register"}
         onClose={closePopup}
         onRegister={handleRegister}
-        onSwitchToLogin={() => setActivePopup("login")}
+        onSwitchToLogin={() => { setAuthError(null); setActivePopup("login"); }}
+        errorMessage={authError}
       />
       <SuccessPopup
         isOpen={activePopup === "success"}

@@ -12,9 +12,10 @@ interface FormationBuilderProps {
   /** Dados iniciais para modo edição */
   initial?: { name: string; starterIds: string[] };
   editMode?: boolean;
+  errorMessage?: string | null;
 }
 
-export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode }: FormationBuilderProps) {
+export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, errorMessage }: FormationBuilderProps) {
   const { getPlayersByTeam, getTeamById } = useData();
   const team = getTeamById(teamId);
   const teamPlayers = getPlayersByTeam(teamId);
@@ -244,7 +245,14 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode }
       )}
 
       {/* Botões */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col gap-3 pt-2">
+        {errorMessage && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium">
+            <span className="shrink-0">⚠️</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+        <div className="flex gap-3">
         <button
           onClick={onCancel}
           className="flex-1 py-2.5 text-sm text-white/50 hover:text-white/70 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-colors cursor-pointer"
@@ -262,6 +270,7 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode }
         >
           {editMode ? "Salvar Alterações" : "Salvar Escalação"}
         </button>
+        </div>
       </div>
     </div>
   );

@@ -13,9 +13,12 @@ export function PlayersPage() {
   const [editingPlayer, setEditingPlayer] = useState<PlayerEntry | null>(null);
   const [deletingPlayer, setDeletingPlayer] = useState<PlayerEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleSave = async (data: PlayerFormData) => {
     try {
+      setFormError(null);
       if (editingPlayer) {
         await updatePlayer(editingPlayer.id, data);
       } else {
@@ -25,7 +28,7 @@ export function PlayersPage() {
       setEditingPlayer(null);
     } catch (err) {
       console.error("Erro ao salvar jogador:", err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar jogador");
+      setFormError(err instanceof Error ? err.message : "Erro ao salvar jogador");
     }
   };
 
@@ -35,11 +38,13 @@ export function PlayersPage() {
   };
 
   const handleDelete = (player: PlayerEntry) => {
+    setDeleteError(null);
     setDeletingPlayer(player);
   };
 
   const handleNew = () => {
     setEditingPlayer(null);
+    setFormError(null);
     setShowForm(true);
   };
 
@@ -148,8 +153,9 @@ export function PlayersPage() {
       {/* Popup form */}
       <PlayerFormPopup
         isOpen={showForm}
-        onClose={() => { setShowForm(false); setEditingPlayer(null); }}
+        onClose={() => { setShowForm(false); setEditingPlayer(null); setFormError(null); }}
         onSave={handleSave}
+        errorMessage={formError}
         preselectedTeamId={activeTeamId}
         initial={editingPlayer ? {
           teamId: editingPlayer.teamId,
@@ -165,23 +171,31 @@ export function PlayersPage() {
       {/* Popup de confirmação de exclusão */}
       <ConfirmPopup
         isOpen={!!deletingPlayer}
-        onClose={() => setDeletingPlayer(null)}
+        onClose={() => { setDeletingPlayer(null); setDeleteError(null); }}
         onConfirm={async () => {
           if (!deletingPlayer) return;
           setDeleting(true);
+          setDeleteError(null);
           try {
             await removePlayer(deletingPlayer.id);
             setDeletingPlayer(null);
           } catch (err) {
             console.error("Erro ao excluir jogador:", err);
+            const msg = err instanceof Error ? err.message : "";
+            if (msg.toLowerCase().includes("restrict") || msg.toLowerCase().includes("foreign") || msg.toLowerCase().includes("dependen") || msg.toLowerCase().includes("referenc")) {
+              setDeleteError("Não é possível excluir este jogador. Ele possui cartões registrados em partidas. Remova as partidas relacionadas primeiro.");
+            } else {
+              setDeleteError(msg || "Erro ao excluir jogador. Tente novamente.");
+            }
           } finally {
             setDeleting(false);
           }
         }}
         title="Excluir Jogador"
-        message={`Tem certeza que deseja excluir "${deletingPlayer?.name}"? O jogador será removido das escalações.`}
+        message={`Tem certeza que deseja excluir "${deletingPlayer?.name}"? O jogador só pode ser excluído se não tiver cartões registrados em partidas.`}
         confirmLabel="Excluir"
         loading={deleting}
+        errorMessage={deleteError}
       />
     </div>
   );

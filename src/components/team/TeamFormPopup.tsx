@@ -20,9 +20,10 @@ interface TeamFormPopupProps {
   onSave: (data: TeamFormData) => Promise<void> | void;
   initial?: Partial<TeamFormData>;
   editMode?: boolean;
+  errorMessage?: string | null;
 }
 
-export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: TeamFormPopupProps) {
+export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode, errorMessage }: TeamFormPopupProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#ffffff");
   const [badge, setBadge] = useState<string | null>(null);
@@ -103,6 +104,7 @@ export function TeamFormPopup({ isOpen, onClose, onSave, initial, editMode }: Te
       onSubmit={handleSubmit}
       submitLabel={saving ? "Salvando..." : editMode ? "Salvar Alterações" : "Salvar Equipe"}
       submitDisabled={!canSubmit || saving}
+      errorMessage={errorMessage}
     >
       {/* Nome */}
       <div className="flex flex-col gap-1">

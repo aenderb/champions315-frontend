@@ -7,9 +7,10 @@ interface LoginPopupProps {
   onClose: () => void;
   onLogin: (email: string, password: string) => void;
   onSwitchToRegister: () => void;
+  errorMessage?: string | null;
 }
 
-export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister }: LoginPopupProps) {
+export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister, errorMessage }: LoginPopupProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -29,6 +30,7 @@ export function LoginPopup({ isOpen, onClose, onLogin, onSwitchToRegister }: Log
       onSubmit={handleSubmit}
       submitLabel="Entrar"
       submitDisabled={!canSubmit}
+      errorMessage={errorMessage}
       footer={
         <button
           type="button"

@@ -8,6 +8,7 @@ interface ConfirmPopupProps {
   message: string;
   confirmLabel?: string;
   loading?: boolean;
+  errorMessage?: string | null;
 }
 
 export function ConfirmPopup({
@@ -18,6 +19,7 @@ export function ConfirmPopup({
   message,
   confirmLabel = "Excluir",
   loading,
+  errorMessage,
 }: ConfirmPopupProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +61,14 @@ export function ConfirmPopup({
           <span className="text-4xl block mb-3">⚠️</span>
           <p className="text-white/70 text-sm">{message}</p>
         </div>
+
+        {/* Erro */}
+        {errorMessage && (
+          <div className="mx-5 mb-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs font-medium">
+            <span className="shrink-0">⚠️</span>
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* Botões */}
         <div className="px-5 pb-5 flex gap-3">

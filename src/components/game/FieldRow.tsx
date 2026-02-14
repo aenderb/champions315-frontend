@@ -9,6 +9,8 @@ interface FieldRowProps {
   onPlayerClick: (index: number) => void;
   /** Alinhamento lateral: posiciona o jogador na linha conforme fieldRole */
   align?: "start" | "center" | "end";
+  /** Destaca todos os jogadores como selecionáveis */
+  highlight?: boolean;
 }
 
 const ALIGN_CLASS = {
@@ -17,7 +19,7 @@ const ALIGN_CLASS = {
   end:    "justify-end",
 } as const;
 
-export function FieldRow({ players, color, yellowCardIds, onPlayerClick, align }: FieldRowProps) {
+export function FieldRow({ players, color, yellowCardIds, onPlayerClick, align, highlight }: FieldRowProps) {
   const justifyClass = align ? ALIGN_CLASS[align] : "justify-around";
   return (
     <div className={`flex ${justifyClass} items-center w-full px-2 sm:px-4 md:px-8 landscape:flex-col landscape:w-auto landscape:h-full landscape:px-0 landscape:py-1 lg:flex-col lg:w-auto lg:h-full lg:px-0 lg:py-2`}>
@@ -29,6 +31,7 @@ export function FieldRow({ players, color, yellowCardIds, onPlayerClick, align }
             color={color}
             onClick={() => onPlayerClick(idx)}
             hasYellowCard={yellowCardIds.has(player.id)}
+            highlight={highlight}
           />
         ) : (
           <EmptySlotBadge key={`empty-${idx}`} />

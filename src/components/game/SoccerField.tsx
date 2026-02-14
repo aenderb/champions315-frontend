@@ -27,9 +27,11 @@ interface SoccerFieldProps {
   color: string;
   yellowCardIds: Set<string>;
   onRemoveFromField: (group: "gk" | "defenders" | "midfielders" | "attackers", idx: number) => void;
+  /** Destaca jogadores de linha como selecionáveis (fluxo de goleiro expulso) */
+  highlightFieldPlayers?: boolean;
 }
 
-export function SoccerField({ players, color, yellowCardIds, onRemoveFromField }: SoccerFieldProps) {
+export function SoccerField({ players, color, yellowCardIds, onRemoveFromField, highlightFieldPlayers }: SoccerFieldProps) {
   return (
     <div className="flex-1 min-h-0 flex items-center justify-center lg:w-[70%] overflow-hidden">
     <div className="relative h-full aspect-[10/13] md:aspect-[10/12] landscape:aspect-[16/9] landscape:w-full landscape:h-auto lg:aspect-auto lg:h-full lg:w-full max-w-full rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl">
@@ -73,18 +75,21 @@ export function SoccerField({ players, color, yellowCardIds, onRemoveFromField }
           yellowCardIds={yellowCardIds}
           onPlayerClick={(idx) => onRemoveFromField("attackers", idx)}
           align={getRowAlign(players.attackers)}
+          highlight={highlightFieldPlayers}
         />
         <FieldRow
           players={players.midfielders}
           color={color}
           yellowCardIds={yellowCardIds}
           onPlayerClick={(idx) => onRemoveFromField("midfielders", idx)}
+          highlight={highlightFieldPlayers}
         />
         <FieldRow
           players={players.defenders}
           color={color}
           yellowCardIds={yellowCardIds}
           onPlayerClick={(idx) => onRemoveFromField("defenders", idx)}
+          highlight={highlightFieldPlayers}
         />
         <div className="flex justify-center landscape:hidden lg:hidden">
           {players.gk ? (

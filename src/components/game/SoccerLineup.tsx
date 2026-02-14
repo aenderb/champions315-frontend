@@ -1,5 +1,5 @@
 import type { LineupData } from "../../types";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLineup } from "../../hooks/useLineup";
 import { useGameTimer } from "../../hooks/useGameTimer";
 import { InfoBar } from "./InfoBar";
@@ -7,6 +7,7 @@ import { SoccerField } from "./SoccerField";
 import { BenchList } from "./BenchList";
 import { GameSummary } from "./GameSummary";
 import type { GameResult } from "./GameSummary";
+import type { EmptySlot } from "../../types";
 
 interface LineupOption {
   id: string;
@@ -39,14 +40,17 @@ export default function SoccerLineup({
     isBelowLimit,
     hasExpulsions,
     expelledPlayers,
-    expelledCount,
     yellowCards,
     yellowCardIds,
+    gkReplacementPhase,
     selectPlayer,
     cancelSelection,
     substitutePlayer,
     expelSelectedPlayer,
     giveYellowCard,
+    replaceGkFromBench,
+    replaceGkFromField,
+    removeOutfielderForGkReplacement,
   } = useLineup({
     initialPlayers: lineup.players,
     initialBench: lineup.bench,
@@ -68,6 +72,32 @@ export default function SoccerLineup({
 
   const color = lineup.teamColor || "#22c55e";
   const isPlayerSelected = selectedSlot !== null;
+
+  // Handler unificado para cliques no campo — roteia conforme a fase
+  const handleFieldClick = useCallback(
+    (group: EmptySlot["group"], idx: number) => {
+      if (gkReplacementPhase === "choose-replacement" && group !== "gk") {
+        replaceGkFromField(group as "defenders" | "midfielders" | "attackers", idx);
+      } else if (gkReplacementPhase === "choose-outfielder-to-remove" && group !== "gk") {
+        removeOutfielderForGkReplacement(group as "defenders" | "midfielders" | "attackers", idx);
+      } else if (!gkReplacementPhase) {
+        selectPlayer(group, idx);
+      }
+    },
+    [gkReplacementPhase, replaceGkFromField, removeOutfielderForGkReplacement, selectPlayer]
+  );
+
+  // Handler unificado para cliques no banco — roteia conforme a fase
+  const handleBenchClick = useCallback(
+    (benchIndex: number) => {
+      if (gkReplacementPhase === "choose-replacement") {
+        replaceGkFromBench(benchIndex);
+      } else {
+        substitutePlayer(benchIndex);
+      }
+    },
+    [gkReplacementPhase, replaceGkFromBench, substitutePlayer]
+  );
 
   const handleFinish = () => {
     if (running) stop();
@@ -119,7 +149,8 @@ export default function SoccerLineup({
         players={players}
         color={color}
         yellowCardIds={yellowCardIds}
-        onRemoveFromField={selectPlayer}
+        onRemoveFromField={handleFieldClick}
+        highlightFieldPlayers={gkReplacementPhase !== null}
       />
 
       <BenchList
@@ -128,10 +159,11 @@ export default function SoccerLineup({
         isPlayerSelected={isPlayerSelected}
         selectedPlayerName={selectedPlayer?.name ?? null}
         selectedPlayerHasYellow={selectedPlayer ? yellowCardIds.has(selectedPlayer.id) : false}
-        onPlayerClick={substitutePlayer}
+        onPlayerClick={handleBenchClick}
         onCancel={cancelSelection}
         onRedCard={expelSelectedPlayer}
         onYellowCard={giveYellowCard}
+        gkReplacementPhase={gkReplacementPhase}
       />
     </div>
   );

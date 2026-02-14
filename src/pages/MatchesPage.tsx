@@ -15,6 +15,7 @@ export function MatchesPage() {
   const { activeTeam, activeTeamId, activeTeamMatches, removeMatch, players } = useData();
   const [deletingMatch, setDeletingMatch] = useState<MatchEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Sem equipe ativa
   if (!activeTeamId || !activeTeam) {
@@ -155,15 +156,17 @@ export function MatchesPage() {
       {/* Popup de confirmação de exclusão */}
       <ConfirmPopup
         isOpen={!!deletingMatch}
-        onClose={() => setDeletingMatch(null)}
+        onClose={() => { setDeletingMatch(null); setDeleteError(null); }}
         onConfirm={async () => {
           if (!deletingMatch || !activeTeamId) return;
           setDeleting(true);
+          setDeleteError(null);
           try {
             await removeMatch(activeTeamId, deletingMatch.id);
             setDeletingMatch(null);
           } catch (err) {
             console.error("Erro ao excluir partida:", err);
+            setDeleteError(err instanceof Error ? err.message : "Erro ao excluir partida. Tente novamente.");
           } finally {
             setDeleting(false);
           }
@@ -172,6 +175,7 @@ export function MatchesPage() {
         message={`Tem certeza que deseja excluir a partida contra "${deletingMatch?.opponentName}"?`}
         confirmLabel="Excluir"
         loading={deleting}
+        errorMessage={deleteError}
       />
     </div>
   );

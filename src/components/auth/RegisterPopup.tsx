@@ -8,6 +8,7 @@ interface RegisterPopupProps {
   onClose: () => void;
   onRegister: (name: string, email: string, password: string, avatar: string | null) => void;
   onSwitchToLogin: () => void;
+  errorMessage?: string | null;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -19,7 +20,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export function RegisterPopup({ isOpen, onClose, onRegister, onSwitchToLogin }: RegisterPopupProps) {
+export function RegisterPopup({ isOpen, onClose, onRegister, onSwitchToLogin, errorMessage }: RegisterPopupProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,6 +55,7 @@ export function RegisterPopup({ isOpen, onClose, onRegister, onSwitchToLogin }: 
       onSubmit={handleSubmit}
       submitLabel="Inscrever-se"
       submitDisabled={!canSubmit}
+      errorMessage={errorMessage}
       footer={
         <button
           type="button"

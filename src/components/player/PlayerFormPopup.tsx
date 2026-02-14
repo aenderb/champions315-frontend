@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { PopupWithForm } from "../auth/PopupWithForm";
 import { useData } from "../../contexts/DataContext";
 import type { TeamEntry } from "../../contexts/DataContext";
-import { ALL_FIELD_ROLES, FIELD_ROLE_TO_POSITION } from "../../constants";
+import { ALL_FIELD_ROLES } from "../../constants";
 import type { FieldRole } from "../../types/api";
 import { compressImage } from "../../utils/image";
 
@@ -24,10 +24,11 @@ interface PlayerFormPopupProps {
   preselectedTeamId?: string;
   initial?: Partial<PlayerFormData>;
   editMode?: boolean;
+  errorMessage?: string | null;
 }
 
 
-export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, initial, editMode }: PlayerFormPopupProps) {
+export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, initial, editMode, errorMessage }: PlayerFormPopupProps) {
   const { teams, activeTeamId } = useData();
 
   const [teamId, setTeamId] = useState("");
@@ -110,6 +111,7 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       onSubmit={handleSubmit}
       submitLabel={saving ? "Salvando..." : editMode ? "Salvar Alterações" : "Salvar Jogador"}
       submitDisabled={!canSubmit || saving}
+      errorMessage={errorMessage}
     >
       {/* Equipe */}
       <div className="flex flex-col gap-1">
@@ -165,17 +167,17 @@ export function PlayerFormPopup({ isOpen, onClose, onSave, preselectedTeamId, in
       </div>
 
       {/* Data de nascimento + Função em campo */}
-      <div className="flex gap-3">
-        <div className="flex flex-col gap-1 flex-1">
-          <label className="text-xs text-white/50 font-medium">Data de nascimento *</label>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-1 w-36 shrink-0">
+          <label className="text-xs text-white/50 font-medium">Nascimento *</label>
           <input
             type="date"
             value={birthDate}
             onChange={(e) => setBirthDate(e.target.value)}
-            className={`${inputClass} [color-scheme:dark]`}
+            className={`${inputClass} [scheme:dark]`}
           />
         </div>
-        <div className="flex flex-col gap-1 flex-1">
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
           <label className="text-xs text-white/50 font-medium">Função em campo *</label>
           <select
             value={fieldRole}

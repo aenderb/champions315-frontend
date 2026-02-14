@@ -11,9 +11,12 @@ export function TeamsPage() {
   const [editingTeam, setEditingTeam] = useState<TeamEntry | null>(null);
   const [deletingTeam, setDeletingTeam] = useState<TeamEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleSave = async (data: TeamFormData) => {
     try {
+      setFormError(null);
       if (editingTeam) {
         await updateTeam(editingTeam.id, data);
       } else {
@@ -23,7 +26,7 @@ export function TeamsPage() {
       setEditingTeam(null);
     } catch (err) {
       console.error("Erro ao salvar equipe:", err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar equipe");
+      setFormError(err instanceof Error ? err.message : "Erro ao salvar equipe");
     }
   };
 
@@ -33,11 +36,13 @@ export function TeamsPage() {
   };
 
   const handleDelete = (team: TeamEntry) => {
+    setDeleteError(null);
     setDeletingTeam(team);
   };
 
   const handleNew = () => {
     setEditingTeam(null);
+    setFormError(null);
     setShowForm(true);
   };
 
@@ -154,32 +159,48 @@ export function TeamsPage() {
       {/* Popup form */}
       <TeamFormPopup
         isOpen={showForm}
-        onClose={() => { setShowForm(false); setEditingTeam(null); }}
+        onClose={() => { setShowForm(false); setEditingTeam(null); setFormError(null); }}
         onSave={handleSave}
-        initial={editingTeam ?? undefined}
+        errorMessage={formError}
+        initial={editingTeam ? {
+          name: editingTeam.name,
+          color: editingTeam.color,
+          badge: editingTeam.badge,
+          year: editingTeam.year?.toString() ?? "",
+          sponsor: editingTeam.sponsor ?? "",
+          sponsorLogo: editingTeam.sponsorLogo,
+        } : undefined}
         editMode={!!editingTeam}
       />
 
       {/* Popup de confirmação de exclusão */}
       <ConfirmPopup
         isOpen={!!deletingTeam}
-        onClose={() => setDeletingTeam(null)}
+        onClose={() => { setDeletingTeam(null); setDeleteError(null); }}
         onConfirm={async () => {
           if (!deletingTeam) return;
           setDeleting(true);
+          setDeleteError(null);
           try {
             await removeTeam(deletingTeam.id);
             setDeletingTeam(null);
           } catch (err) {
             console.error("Erro ao excluir equipe:", err);
+            const msg = err instanceof Error ? err.message : "";
+            if (msg.toLowerCase().includes("restrict") || msg.toLowerCase().includes("foreign") || msg.toLowerCase().includes("dependen") || msg.toLowerCase().includes("referenc")) {
+              setDeleteError("Não é possível excluir esta equipe. Remova primeiro todos os jogadores, escalações e partidas associados.");
+            } else {
+              setDeleteError(msg || "Erro ao excluir equipe. Tente novamente.");
+            }
           } finally {
             setDeleting(false);
           }
         }}
         title="Excluir Equipe"
-        message={`Tem certeza que deseja excluir "${deletingTeam?.name}"? Todos os jogadores e escalações serão removidos.`}
+        message={`Tem certeza que deseja excluir "${deletingTeam?.name}"? A equipe só pode ser excluída se não tiver jogadores, escalações ou partidas associados.`}
         confirmLabel="Excluir"
         loading={deleting}
+        errorMessage={deleteError}
       />
     </div>
   );

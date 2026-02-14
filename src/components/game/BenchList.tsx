@@ -1,5 +1,6 @@
 import type { Player } from "../../types";
 import { PlayerBadge } from "./PlayerBadge";
+import type { GkReplacementPhase } from "../../hooks/useLineup";
 
 interface BenchListProps {
   bench: Player[];
@@ -11,6 +12,7 @@ interface BenchListProps {
   onCancel: () => void;
   onRedCard: () => void;
   onYellowCard: () => void;
+  gkReplacementPhase?: GkReplacementPhase;
 }
 
 export function BenchList({
@@ -23,20 +25,34 @@ export function BenchList({
   onCancel,
   onRedCard,
   onYellowCard,
+  gkReplacementPhase,
 }: BenchListProps) {
   return (
     <div className="shrink-0 mt-1 md:mt-2 lg:mt-1 lg:w-[70%]">
       <h3 className="text-xs md:text-sm lg:text-xs font-semibold text-white/70 mb-1 md:mb-2 lg:mb-1 px-1">
         Reservas ({bench.length})
-        {isPlayerSelected && selectedPlayerName && (
+        {isPlayerSelected && selectedPlayerName && !gkReplacementPhase && (
           <span className="text-yellow-400 text-[10px] md:text-xs lg:text-sm ml-1">
             — {selectedPlayerName} selecionado
           </span>
         )}
       </h3>
+
+      {/* Mensagem de substituição obrigatória do goleiro */}
+      {gkReplacementPhase && (
+        <div className="mb-2 flex items-center gap-2 px-3 py-2 bg-red-500/15 border border-red-500/40 rounded-lg animate-pulse">
+          <span className="text-red-400 text-lg shrink-0">🧤</span>
+          <span className="text-red-300 text-xs md:text-sm font-semibold">
+            {gkReplacementPhase === "choose-replacement"
+              ? "Goleiro expulso! Escolha um jogador para ir ao gol (do banco ou do campo)."
+              : "Agora escolha um jogador de linha para sair do campo."}
+          </span>
+        </div>
+      )}
+
       <div className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-3 bg-white/5 backdrop-blur-sm rounded-lg md:rounded-xl lg:rounded-lg p-2 md:p-4 lg:p-2 border border-white/10 min-h-[70px] md:min-h-[90px] lg:min-h-[60px] scrollbar-thin">
-        {/* Botões de ação quando um jogador está selecionado */}
-        {isPlayerSelected && (
+        {/* Botões de ação quando um jogador está selecionado (não durante substituição de GK) */}
+        {isPlayerSelected && !gkReplacementPhase && (
           <>
             {/* Cancelar */}
             <div className="flex-shrink-0">
@@ -86,9 +102,20 @@ export function BenchList({
             <div key={player.number} className="flex-shrink-0">
               <PlayerBadge
                 player={player}
-                color={isPlayerSelected ? "#3b82f6" : "#6b7280"}
-                onClick={() => onPlayerClick(idx)}
-                highlight={isPlayerSelected}
+                color={
+                  gkReplacementPhase === "choose-replacement"
+                    ? "#22c55e"
+                    : isPlayerSelected
+                      ? "#3b82f6"
+                      : "#6b7280"
+                }
+                onClick={
+                  gkReplacementPhase === "choose-outfielder-to-remove"
+                    ? undefined
+                    : () => onPlayerClick(idx)
+                }
+                highlight={gkReplacementPhase === "choose-replacement" || isPlayerSelected}
+                inactive={gkReplacementPhase === "choose-outfielder-to-remove"}
               />
             </div>
           ))

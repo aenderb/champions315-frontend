@@ -11,10 +11,13 @@ export function FormationsPage() {
   const [editingLineup, setEditingLineup] = useState<LineupEntry | null>(null);
   const [deletingLineup, setDeletingLineup] = useState<LineupEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleSave = async (name: string, starterIds: string[], benchIds: string[]) => {
     if (!activeTeamId) return;
     try {
+      setFormError(null);
       if (editingLineup) {
         await updateLineup(editingLineup.id, { name, starterIds, benchIds });
       } else {
@@ -24,7 +27,7 @@ export function FormationsPage() {
       setEditingLineup(null);
     } catch (err) {
       console.error("Erro ao salvar escalação:", err);
-      alert(err instanceof Error ? err.message : "Erro ao salvar escalação");
+      setFormError(err instanceof Error ? err.message : "Erro ao salvar escalação");
     }
   };
 
@@ -60,9 +63,10 @@ export function FormationsPage() {
         <FormationBuilder
           teamId={activeTeamId}
           onSave={handleSave}
-          onCancel={() => { setBuilding(false); setEditingLineup(null); }}
+          onCancel={() => { setBuilding(false); setEditingLineup(null); setFormError(null); }}
           initial={editingLineup ? { name: editingLineup.name, starterIds: editingLineup.starterIds } : undefined}
           editMode={!!editingLineup}
+          errorMessage={formError}
         />
       </div>
     );
@@ -190,15 +194,17 @@ export function FormationsPage() {
       {/* Popup de confirmação de exclusão */}
       <ConfirmPopup
         isOpen={!!deletingLineup}
-        onClose={() => setDeletingLineup(null)}
+        onClose={() => { setDeletingLineup(null); setDeleteError(null); }}
         onConfirm={async () => {
           if (!deletingLineup) return;
           setDeleting(true);
+          setDeleteError(null);
           try {
             await removeLineup(deletingLineup.id);
             setDeletingLineup(null);
           } catch (err) {
             console.error("Erro ao excluir escalação:", err);
+            setDeleteError(err instanceof Error ? err.message : "Erro ao excluir escalação. Tente novamente.");
           } finally {
             setDeleting(false);
           }
@@ -207,6 +213,7 @@ export function FormationsPage() {
         message={`Tem certeza que deseja excluir "${deletingLineup?.name}"? Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
         loading={deleting}
+        errorMessage={deleteError}
       />
     </div>
   );
