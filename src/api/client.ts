@@ -9,9 +9,12 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3333/api";
 
 let _refreshPromise: Promise<void> | null = null;
 
-async function tryRefresh(): Promise<boolean> {
+/**
+ * Tenta renovar o access token via refresh_token cookie.
+ * Dedup: se já houver um refresh em andamento, reutiliza a mesma promise.
+ */
+export async function tryRefresh(): Promise<boolean> {
   try {
-    // Evita múltiplos refreshes simultâneos
     if (!_refreshPromise) {
       _refreshPromise = fetch(`${BASE_URL}/users/refresh`, {
         method: "POST",

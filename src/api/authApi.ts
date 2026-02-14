@@ -1,4 +1,4 @@
-import { post, postFormData, patchFormData } from "./client";
+import { post, postFormData, patchFormData, tryRefresh } from "./client";
 import type { ApiUser, ApiSigninResponse } from "../types/api";
 
 // ── Auth ─────────────────────────────────────
@@ -27,9 +27,9 @@ export async function signin(
   return post<ApiSigninResponse>("/users/signin", { email, password });
 }
 
-/** Renova access token via refresh_token cookie */
-export async function refresh(): Promise<void> {
-  await post("/users/refresh");
+/** Renova access token via refresh_token cookie (bypass do interceptor 401) */
+export async function refresh(): Promise<boolean> {
+  return tryRefresh();
 }
 
 /** Logout — revoga refresh token e limpa cookies */

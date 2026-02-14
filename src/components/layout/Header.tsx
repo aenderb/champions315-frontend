@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { onAuthExpired } from "../../api";
 import { LoginPopup } from "../auth/LoginPopup";
@@ -13,19 +13,27 @@ type AuthPopup = "login" | "register" | "success" | null;
 export function Header() {
   const { isLoggedIn, userName, userAvatar, login, register, logout, updateAvatar } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePopup, setActivePopup] = useState<AuthPopup>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const lastPathRef = useRef(location.pathname);
 
-  // Quando a sessão expirar, abre o popup de login com mensagem informativa
+  // Salva a rota atual enquanto logado (para restaurar após re-login)
+  useEffect(() => {
+    if (isLoggedIn && location.pathname !== "/") {
+      lastPathRef.current = location.pathname;
+    }
+  }, [location.pathname, isLoggedIn]);
+
+  // Quando a sessão expirar, abre o popup de login sem navegar
   useEffect(() => {
     return onAuthExpired(() => {
       setAuthError("Sua sessão expirou. Faça login novamente.");
       setActivePopup("login");
-      navigate("/");
     });
-  }, [navigate]);
+  }, []);
 
   const handleAvatarUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -54,6 +62,10 @@ export function Header() {
       setAuthError(null);
       await login(email, password);
       closePopup();
+      // Restaura a rota onde o user estava antes da sessão expirar
+      if (lastPathRef.current && lastPathRef.current !== "/") {
+        navigate(lastPathRef.current);
+      }
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : "Erro ao fazer login");
     }

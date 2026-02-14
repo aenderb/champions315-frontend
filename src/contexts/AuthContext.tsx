@@ -39,15 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Tenta restaurar sessão via refresh token ao montar
   useEffect(() => {
     refresh()
-      .then(() => {
-        // Se o refresh deu certo, buscar dados do user do localStorage
-        const saved = localStorage.getItem("c315_user");
-        if (saved) {
-          const user: ApiUser = JSON.parse(saved);
-          setAuth({ isLoggedIn: true, user, loading: false });
-        } else {
-          setAuth({ isLoggedIn: false, user: null, loading: false });
+      .then((ok) => {
+        if (ok) {
+          const saved = localStorage.getItem("c315_user");
+          if (saved) {
+            const user: ApiUser = JSON.parse(saved);
+            setAuth({ isLoggedIn: true, user, loading: false });
+            return;
+          }
         }
+        // Refresh falhou ou sem user salvo
+        localStorage.removeItem("c315_user");
+        setAuth({ isLoggedIn: false, user: null, loading: false });
       })
       .catch(() => {
         localStorage.removeItem("c315_user");
