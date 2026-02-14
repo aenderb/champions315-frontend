@@ -29,11 +29,13 @@ interface SoccerFieldProps {
   onRemoveFromField: (group: "gk" | "defenders" | "midfielders" | "attackers", idx: number) => void;
   /** Destaca jogadores de linha como selecionáveis (fluxo de goleiro expulso) */
   highlightFieldPlayers?: boolean;
+  /** Reduz opacidade do campo (idade abaixo do limite) */
+  dimmed?: boolean;
 }
 
-export function SoccerField({ players, color, yellowCardIds, onRemoveFromField, highlightFieldPlayers }: SoccerFieldProps) {
+export function SoccerField({ players, color, yellowCardIds, onRemoveFromField, highlightFieldPlayers, dimmed }: SoccerFieldProps) {
   return (
-    <div className="flex-1 min-h-0 flex items-center justify-center lg:w-[70%] overflow-hidden">
+    <div className={`flex-1 min-h-0 flex items-center justify-center lg:w-[70%] overflow-hidden transition-opacity duration-500 ${dimmed ? "opacity-40" : "opacity-100"}`}>
     <div className="relative h-full aspect-[10/13] md:aspect-[10/12] landscape:aspect-[16/9] landscape:w-full landscape:h-auto lg:aspect-auto lg:h-full lg:w-full max-w-full rounded-xl md:rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl">
 
       {/* Faixas de grama - retrato (portrait only) */}

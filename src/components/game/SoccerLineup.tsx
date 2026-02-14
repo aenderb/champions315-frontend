@@ -2,6 +2,7 @@ import type { LineupData } from "../../types";
 import { useState, useCallback } from "react";
 import { useLineup } from "../../hooks/useLineup";
 import { useGameTimer } from "../../hooks/useGameTimer";
+import { AGE_LIMIT } from "../../constants";
 import { InfoBar } from "./InfoBar";
 import { SoccerField } from "./SoccerField";
 import { BenchList } from "./BenchList";
@@ -43,9 +44,12 @@ export default function SoccerLineup({
     yellowCards,
     yellowCardIds,
     gkReplacementPhase,
+    pendingSub,
     selectPlayer,
     cancelSelection,
     substitutePlayer,
+    confirmPendingSub,
+    cancelPendingSub,
     expelSelectedPlayer,
     giveYellowCard,
     replaceGkFromBench,
@@ -151,6 +155,7 @@ export default function SoccerLineup({
         yellowCardIds={yellowCardIds}
         onRemoveFromField={handleFieldClick}
         highlightFieldPlayers={gkReplacementPhase !== null}
+        dimmed={isBelowLimit}
       />
 
       <BenchList
@@ -165,6 +170,38 @@ export default function SoccerLineup({
         onYellowCard={giveYellowCard}
         gkReplacementPhase={gkReplacementPhase}
       />
+
+      {/* Popup de confirmação de substituição abaixo de 315 */}
+      {pendingSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-red-500/50 rounded-2xl p-5 mx-4 max-w-sm w-full shadow-xl">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">⚠️</span>
+              <h3 className="text-red-400 font-bold text-base">Atenção!</h3>
+            </div>
+            <p className="text-white/80 text-sm font-medium mb-1">
+              Esta substituição fará a soma das idades cair para{" "}
+              <span className="text-red-400 font-bold">{pendingSub.newTotalAge}</span>,
+              abaixo do mínimo de <span className="font-bold">{AGE_LIMIT}</span>.
+            </p>
+            <p className="text-white/60 text-sm mb-5">Deseja manter a substituição?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelPendingSub}
+                className="flex-1 py-2.5 text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl transition-colors cursor-pointer"
+              >
+                Não
+              </button>
+              <button
+                onClick={confirmPendingSub}
+                className="flex-1 py-2.5 text-sm font-semibold bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/40 rounded-xl transition-colors cursor-pointer"
+              >
+                Sim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
