@@ -7,30 +7,48 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3333/api";
 
 // ── Auto-refresh em 401 ────────────────────────
 
-let _refreshPromise: Promise<void> | null = null;
+let _refreshPromise: Promise<boolean> | null = null;
+let _authExpired = false;            // sessão marcada como expirada
+let _refreshFailedAt = 0;            // timestamp do último refresh que falhou
+const REFRESH_COOLDOWN_MS = 5_000;   // cooldown entre tentativas de refresh
 
 /**
  * Tenta renovar o access token via refresh_token cookie.
  * Dedup: se já houver um refresh em andamento, reutiliza a mesma promise.
+ * Cooldown: se o ultimo refresh falhou há menos de 5 s, nem tenta.
  */
 export async function tryRefresh(): Promise<boolean> {
-  try {
-    if (!_refreshPromise) {
-      _refreshPromise = fetch(`${BASE_URL}/users/refresh`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-      }).then((res) => {
+  // Se a sessão já foi marcada como expirada, nem tenta
+  if (_authExpired) return false;
+
+  // Cooldown: evitar flood de refreshes após falha
+  if (Date.now() - _refreshFailedAt < REFRESH_COOLDOWN_MS) return false;
+
+  if (!_refreshPromise) {
+    _refreshPromise = fetch(`${BASE_URL}/users/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => {
         if (!res.ok) throw new Error("refresh failed");
+        return true;
+      })
+      .catch(() => {
+        _refreshFailedAt = Date.now();
+        return false;
+      })
+      .finally(() => {
+        _refreshPromise = null;
       });
-    }
-    await _refreshPromise;
-    return true;
-  } catch {
-    return false;
-  } finally {
-    _refreshPromise = null;
   }
+  return _refreshPromise;
+}
+
+/** Reseta o estado de expiração (chamar após login bem-sucedido) */
+export function resetAuthExpired() {
+  _authExpired = false;
+  _refreshFailedAt = 0;
 }
 
 /** Evento global disparado quando a sessão expira (401 + refresh falha) */
@@ -40,6 +58,8 @@ export function onAuthExpired(cb: () => void): () => void {
 }
 
 function emitAuthExpired() {
+  if (_authExpired) return; // já emitiu, não repetir
+  _authExpired = true;
   window.dispatchEvent(new Event("auth:expired"));
 }
 
@@ -126,7 +146,7 @@ async function fetchWithAuth(
 ): Promise<Response> {
   const res = await fetch(url, init);
 
-  if (res.status === 401 && !skipRetry) {
+  if (res.status === 401 && !skipRetry && !_authExpired) {
     const refreshed = await tryRefresh();
     if (refreshed) {
       // Retry com o cookie renovado

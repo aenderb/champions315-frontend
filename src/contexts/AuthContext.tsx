@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
-import { signin, signup, logout as apiLogout, refresh, updateAvatar as apiUpdateAvatar, onAuthExpired } from "../api";
+import { signin, signup, logout as apiLogout, refresh, updateAvatar as apiUpdateAvatar, onAuthExpired, resetAuthExpired } from "../api";
 import type { ApiUser } from "../types/api";
 
 interface AuthState {
@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await signin(email, password);
+    resetAuthExpired(); // Limpar flag de sessão expirada
     localStorage.setItem("c315_user", JSON.stringify(res.user));
     setAuth({ isLoggedIn: true, user: res.user, loading: false });
   }, []);
