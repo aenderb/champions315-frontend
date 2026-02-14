@@ -61,6 +61,7 @@ export interface LineupData {
   formation: string;
   teamName: string;
   teamColor?: string;
+  sponsorLogo?: string;
   players: LineupPlayers;
   bench: Player[];
 }

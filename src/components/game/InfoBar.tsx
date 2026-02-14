@@ -8,6 +8,7 @@ interface LineupOption {
 
 interface InfoBarProps {
   teamName: string;
+  sponsorLogo?: string;
   totalAge: number;
   averageAge: number;
   isBelowLimit: boolean;
@@ -33,6 +34,7 @@ interface InfoBarProps {
 
 export function InfoBar({
   teamName,
+  sponsorLogo,
   totalAge,
   averageAge,
   isBelowLimit,
@@ -53,6 +55,13 @@ export function InfoBar({
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-1 md:mb-2 lg:mb-1 px-1 gap-1 md:gap-0">
         <div className="flex flex-col items-start md:flex-row md:items-center gap-1 md:gap-2 min-w-0">
           <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
+            {sponsorLogo && (
+              <img
+                src={sponsorLogo}
+                alt="Patrocinador"
+                className="h-8 md:h-10 w-auto object-contain rounded"
+              />
+            )}
             <h2 className="text-lg md:text-xl lg:text-xl font-bold text-white whitespace-nowrap">
               {teamName}
             </h2>

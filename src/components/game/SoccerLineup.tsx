@@ -126,6 +126,7 @@ export default function SoccerLineup({
     <div className="w-full h-full flex flex-col min-h-0 lg:items-center overflow-y-auto lg:overflow-hidden">
       <InfoBar
         teamName={lineup.teamName}
+        sponsorLogo={lineup.sponsorLogo}
         totalAge={totalAge}
         averageAge={averageAge}
         isBelowLimit={isBelowLimit}

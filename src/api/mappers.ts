@@ -69,6 +69,7 @@ export function toLineupData(
     formation: lineup.formation,
     teamName: team.name,
     teamColor: team.color ?? undefined,
+    sponsorLogo: team.sponsorLogo ?? undefined,
     players: distributeByFormation(lineup.starters),
     bench: lineup.bench.map(toPlayer),
   };
@@ -95,6 +96,7 @@ export function toLineupDataFromIds(
     formation: lineup.formation,
     teamName: team.name,
     teamColor: team.color ?? undefined,
+    sponsorLogo: team.sponsorLogo ?? undefined,
     players: distributeByFormation(starters),
     bench: bench.map(toPlayer),
   };
