@@ -5,6 +5,41 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3333/api";
 
+// ── Auto-refresh em 401 ────────────────────────
+
+let _refreshPromise: Promise<void> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  try {
+    // Evita múltiplos refreshes simultâneos
+    if (!_refreshPromise) {
+      _refreshPromise = fetch(`${BASE_URL}/users/refresh`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      }).then((res) => {
+        if (!res.ok) throw new Error("refresh failed");
+      });
+    }
+    await _refreshPromise;
+    return true;
+  } catch {
+    return false;
+  } finally {
+    _refreshPromise = null;
+  }
+}
+
+/** Evento global disparado quando a sessão expira (401 + refresh falha) */
+export function onAuthExpired(cb: () => void): () => void {
+  window.addEventListener("auth:expired", cb);
+  return () => window.removeEventListener("auth:expired", cb);
+}
+
+function emitAuthExpired() {
+  window.dispatchEvent(new Event("auth:expired"));
+}
+
 // ── snake_case ↔ camelCase helpers ──────────────
 
 function snakeToCamel(s: string): string {
@@ -77,8 +112,32 @@ async function handleResponse<T>(res: Response, opts?: RequestOptions): Promise<
   return opts?.raw ? json : keysToCamel(json);
 }
 
+/**
+ * Wrapper de fetch que tenta refresh automático em caso de 401.
+ * Se o refresh também falhar, emite auth:expired para forçar re-login.
+ */
+async function fetchWithAuth(
+  url: string,
+  init: RequestInit,
+  skipRetry = false
+): Promise<Response> {
+  const res = await fetch(url, init);
+
+  if (res.status === 401 && !skipRetry) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      // Retry com o cookie renovado
+      return fetch(url, init);
+    }
+    // Refresh falhou — sessão expirou
+    emitAuthExpired();
+  }
+
+  return res;
+}
+
 export async function get<T>(endpoint: string, opts?: RequestOptions): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     credentials: "include",
   });
   return handleResponse<T>(res, opts);
@@ -89,7 +148,7 @@ export async function post<T>(
   body?: unknown,
   opts?: RequestOptions
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -103,7 +162,7 @@ export async function postFormData<T>(
   formData: FormData,
   opts?: RequestOptions
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "POST",
     credentials: "include",
     body: formData,
@@ -116,7 +175,7 @@ export async function put<T>(
   body?: unknown,
   opts?: RequestOptions
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "PUT",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -130,7 +189,7 @@ export async function putFormData<T>(
   formData: FormData,
   opts?: RequestOptions
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "PUT",
     credentials: "include",
     body: formData,
@@ -143,7 +202,7 @@ export async function patchFormData<T>(
   formData: FormData,
   opts?: RequestOptions
 ): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "PATCH",
     credentials: "include",
     body: formData,
@@ -152,7 +211,7 @@ export async function patchFormData<T>(
 }
 
 export async function del<T = void>(endpoint: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetchWithAuth(`${BASE_URL}${endpoint}`, {
     method: "DELETE",
     credentials: "include",
   });

@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { onAuthExpired } from "../../api";
 import { LoginPopup } from "../auth/LoginPopup";
 import { RegisterPopup } from "../auth/RegisterPopup";
 import { SuccessPopup } from "../auth/SuccessPopup";
@@ -16,6 +17,15 @@ export function Header() {
   const [activePopup, setActivePopup] = useState<AuthPopup>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Quando a sessão expirar, abre o popup de login com mensagem informativa
+  useEffect(() => {
+    return onAuthExpired(() => {
+      setAuthError("Sua sessão expirou. Faça login novamente.");
+      setActivePopup("login");
+      navigate("/");
+    });
+  }, [navigate]);
 
   const handleAvatarUpload = async (file: File | undefined) => {
     if (!file) return;

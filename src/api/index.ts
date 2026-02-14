@@ -14,4 +14,4 @@ export { createLineup, getLineups, getLineupById, updateLineup, deleteLineup } f
 export { createMatch, getMatches, getMatchById, deleteMatch } from "./matchApi";
 
 // Client utilities
-export { ApiError } from "./client";
+export { ApiError, onAuthExpired } from "./client";

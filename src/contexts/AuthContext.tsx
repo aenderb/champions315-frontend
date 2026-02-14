@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
-import { signin, signup, logout as apiLogout, refresh, updateAvatar as apiUpdateAvatar } from "../api";
+import { signin, signup, logout as apiLogout, refresh, updateAvatar as apiUpdateAvatar, onAuthExpired } from "../api";
 import type { ApiUser } from "../types/api";
 
 interface AuthState {
@@ -27,6 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: null,
     loading: true,
   });
+
+  // Quando a sessão expirar (401 + refresh falhou), faz logout local
+  useEffect(() => {
+    return onAuthExpired(() => {
+      localStorage.removeItem("c315_user");
+      setAuth({ isLoggedIn: false, user: null, loading: false });
+    });
+  }, []);
 
   // Tenta restaurar sessão via refresh token ao montar
   useEffect(() => {
