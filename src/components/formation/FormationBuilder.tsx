@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useData } from "../../contexts/DataContext";
 import type { PlayerEntry } from "../../contexts/DataContext";
 import { calcAge } from "../../utils/age";
-import { AGE_LIMIT, FORMATION_SLOTS, POSITION_LABELS } from "../../constants";
+import { AGE_LIMIT, FORMATION_SLOTS, POSITION_LABELS, FIELD_ROLE_SHORT } from "../../constants";
 import type { PlayerPosition } from "../../types/api";
 
 interface FormationBuilderProps {
@@ -164,7 +164,7 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, 
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="text-white text-sm font-medium truncate block">{player.name}</span>
-                          <span className="text-white/30 text-xs">#{player.number} · {calcAge(player.birthDate)} anos</span>
+                          <span className="text-white/30 text-xs">#{player.number} · {player.fieldRole ? FIELD_ROLE_SHORT[player.fieldRole] : POSITION_LABELS[player.position]?.slice(0, 3)} · {calcAge(player.birthDate)}a</span>
                         </div>
                         <button
                           onClick={() => removeStarter(slotIndex)}
@@ -188,7 +188,7 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, 
                             <option value="" className="bg-gray-900">Selecionar {POSITION_LABELS[group.group]}...</option>
                             {available.map((p) => (
                               <option key={p.id} value={p.id} className="bg-gray-900">
-                                #{p.number} {p.name} ({calcAge(p.birthDate)}a)
+                                #{p.number} {p.name} · {p.fieldRole ? FIELD_ROLE_SHORT[p.fieldRole] : POSITION_LABELS[p.position]?.slice(0, 3)} · {calcAge(p.birthDate)}a
                               </option>
                             ))}
                           </select>
@@ -237,7 +237,8 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, 
               >
                 <span className="font-mono text-white/30">#{p.number}</span>
                 <span>{p.name}</span>
-                <span className="text-white/20">{POSITION_LABELS[p.position]?.slice(0, 3) ?? p.position}</span>
+                <span className="text-white/20">{p.fieldRole ? FIELD_ROLE_SHORT[p.fieldRole] : POSITION_LABELS[p.position]?.slice(0, 3) ?? p.position}</span>
+                <span className="text-white/20">{calcAge(p.birthDate)}a</span>
               </div>
             ))}
           </div>
