@@ -54,7 +54,7 @@ export function InfoBar({
       {/* Barra de informações */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-1 md:mb-2 lg:mb-1 px-1 gap-1 md:gap-0">
         <div className="flex flex-col items-start md:flex-row md:items-center gap-1 md:gap-2 min-w-0">
-          <div className="flex items-center justify-between md:justify-start gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-1 md:gap-2 w-full md:w-auto">
             {sponsorLogo && (
               <img
                 src={sponsorLogo}
@@ -67,7 +67,7 @@ export function InfoBar({
             </h2>
             {/* Badge de idade - visível no mobile ao lado do nome */}
             <span
-              className={`md:hidden text-lg backdrop-blur-sm px-3 py-1 rounded-full font-mono font-bold ${
+              className={`md:hidden ml-auto text-lg backdrop-blur-sm px-3 py-1 rounded-full font-mono font-bold ${
                 isBelowLimit
                   ? "bg-red-500/20 text-red-400 border border-red-500/50"
                   : "bg-green-500/20 text-green-400 border border-green-500/50"
