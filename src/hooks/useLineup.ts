@@ -103,9 +103,10 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
         if (selectedSlot.group === "gk") {
           next.gk = benchPlayer;
         } else {
-          const arr = [...next[selectedSlot.group]];
+          const group = selectedSlot.group as "defenders" | "midfielders" | "attackers";
+          const arr = [...next[group]];
           arr[selectedSlot.index] = benchPlayer;
-          next[selectedSlot.group] = arr;
+          next[group] = arr;
         }
         return next;
       });
@@ -134,9 +135,10 @@ export function useLineup({ initialPlayers, initialBench }: UseLineupParams) {
       if (isGk) {
         next.gk = null;
       } else {
-        const arr = [...prev[selectedSlot.group]];
+        const group = selectedSlot.group as "defenders" | "midfielders" | "attackers";
+        const arr = [...prev[group]];
         arr.splice(selectedSlot.index, 1);
-        next[selectedSlot.group] = arr;
+        next[group] = arr;
       }
       return next;
     });
