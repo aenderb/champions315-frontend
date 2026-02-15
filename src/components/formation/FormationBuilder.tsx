@@ -90,8 +90,11 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, 
   const getPlayer = (id: string | null) =>
     id ? teamPlayers.find((p) => p.id === id) : null;
 
-  // Offset acumulado para mapear slot global → grupo
-  let slotOffset = 0;
+  // Offset acumulado pré-calculado para cada grupo
+  const groupOffsets = FORMATION_SLOTS.reduce<number[]>((acc, _, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + FORMATION_SLOTS[i - 1].count);
+    return acc;
+  }, []);
 
   return (
     <div className="flex flex-col gap-4">
@@ -129,9 +132,8 @@ export function FormationBuilder({ teamId, onSave, onCancel, initial, editMode, 
       </div>
 
       {/* Slots por grupo */}
-      {FORMATION_SLOTS.map((group) => {
-        const groupStart = slotOffset;
-        slotOffset += group.count;
+      {FORMATION_SLOTS.map((group, groupIndex) => {
+        const groupStart = groupOffsets[groupIndex];
 
         return (
           <div key={group.group} className="flex flex-col gap-2">
